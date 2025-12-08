@@ -1,0 +1,188 @@
+{
+  "name": "test",
+  "backgrounds": {
+    "primary": "#1d1f28",
+    "secondary": "#0d0f18",
+    "tertiary": "#44475c",
+    "input": "#1d1f28"
+  },
+  "text": {
+    "primary": "#ffffff",
+    "secondary": "#bdbdc0",
+    "disabled": "#6f779a",
+    "links": "#00c4fe"
+  },
+  "accents": {
+    "primary": "#BB86FC",
+    "secondary": "#23c87b",
+    "warning": "#ff8c00",
+    "error": "#ff4a7c"
+  },
+  "borders": {
+    "active": "#BB86FC",
+    "inactive": "#6f779a"
+  },
+  "buttons": {
+    "neutral": {
+      "normal": {
+        "background": "#44475c",
+        "outline": "#6f779a",
+        "text": "#ffffff"
+      },
+      "hovered": {
+        "background": "#5a5d75",
+        "outline": "#8b95c0",
+        "text": "#ffffff"
+      },
+      "clicked": {
+        "background": "#363849",
+        "outline": "#6f779a",
+        "text": "#ffffff"
+      },
+      "disabled": {
+        "background": "#2a2c38",
+        "outline": "#44475c",
+        "text": "#6f779a"
+      }
+    },
+    "danger": {
+      "normal": {
+        "background": "#1d1f28",
+        "outline": "#ff4a7c",
+        "text": "#ff4a7c"
+      },
+      "hovered": {
+        "background": "#000000",
+        "outline": "#d93d65",
+        "text": "#d93d65"
+      },
+      "clicked": {
+        "background": "#ff4a7c",
+        "outline": "#ff4a7c",
+        "text": "#1d1f28"
+      },
+      "disabled": {
+        "background": "#1d1f28",
+        "outline": "#6f779a",
+        "text": "#6f779a"
+      }
+    },
+    "success": {
+      "normal": {
+        "background": "#1d1f28",
+        "outline": "#23c87b",
+        "text": "#23c87b"
+      },
+      "hovered": {
+        "background": "#000000",
+        "outline": "#1a945b",
+        "text": "#1a945b"
+      },
+      "clicked": {
+        "background": "#23c87b",
+        "outline": "#23c87b",
+        "text": "#1d1f28"
+      },
+      "disabled": {
+        "background": "#1d1f28",
+        "outline": "#6f779a",
+        "text": "#6f779a"
+      }
+    },
+    "primary": {
+      "normal": {
+        "background": "#1d1f28",
+        "outline": "#00aa7f",
+        "text": "#BB86FC"
+      },
+      "hovered": {
+        "background": "#000000",
+        "outline": "#9965DA",
+        "text": "#9965DA"
+      },
+      "clicked": {
+        "background": "#BB86FC",
+        "outline": "#BB86FC",
+        "text": "#1d1f28"
+      },
+      "disabled": {
+        "background": "#1d1f28",
+        "outline": "#6f779a",
+        "text": "#6f779a"
+      }
+    },
+    "secondary": {
+      "normal": {
+        "background": "#1d1f28",
+        "outline": "#00c4fe",
+        "text": "#00c4fe"
+      },
+      "hovered": {
+        "background": "#000000",
+        "outline": "#0099cc",
+        "text": "#0099cc"
+      },
+      "clicked": {
+        "background": "#00c4fe",
+        "outline": "#00c4fe",
+        "text": "#1d1f28"
+      },
+      "disabled": {
+        "background": "#1d1f28",
+        "outline": "#6f779a",
+        "text": "#6f779a"
+      }
+    },
+    "tertiary": {
+      "normal": {
+        "background": "#1d1f28",
+        "outline": "#ff8c00",
+        "text": "#ff8c00"
+      },
+      "hovered": {
+        "background": "#000000",
+        "outline": "#e67300",
+        "text": "#e67300"
+      },
+      "clicked": {
+        "background": "#ff8c00",
+        "outline": "#ff8c00",
+        "text": "#1d1f28"
+      },
+      "disabled": {
+        "background": "#1d1f28",
+        "outline": "#6f779a",
+        "text": "#6f779a"
+      }
+    }
+  },
+  "control_styles": {
+    "buttons": {
+      "border_radius": 4,
+      "padding_horizontal": 12,
+      "padding_vertical": 6,
+      "font_size": 11,
+      "font_weight": "normal",
+      "border_width": 1
+    },
+    "inputs": {
+      "border_radius": 4,
+      "padding_horizontal": 8,
+      "padding_vertical": 4,
+      "font_size": 10,
+      "border_width": 1,
+      "focus_border_width": 2
+    },
+    "cards": {
+      "border_radius": 8,
+      "padding": 12,
+      "border_width": 0
+    },
+    "labels": {
+      "font_size_primary": 14,
+      "font_size_secondary": 10,
+      "font_weight_primary": "bold",
+      "font_weight_secondary": "normal"
+    }
+  }
+}
