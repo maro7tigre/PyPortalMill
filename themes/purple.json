@@ -156,6 +156,67 @@
             }
         }
     },
+    "profile_cards": {
+        "neutral": {
+            "normal": {
+                "background": "#44475c",
+                "border": "#6f779a"
+            },
+            "hovered": {
+                "background": "#3a3d4d",
+                "border": "#8b95c0"
+            },
+            "selected": {
+                "background": "#2d2f3f",
+                "border": "#BB86FC"
+            },
+            "card_image_background": "#1d1f28"
+        },
+        "success": {
+            "normal": {
+                "background": "#44475c",
+                "border": "#6f779a"
+            },
+            "hovered": {
+                "background": "#3a3d4d",
+                "border": "#8b95c0"
+            },
+            "selected": {
+                "background": "#1A2E20",
+                "border": "#23c87b"
+            },
+            "card_image_background": "#1d1f28"
+        },
+        "danger": {
+            "normal": {
+                "background": "#44475c",
+                "border": "#6f779a"
+            },
+            "hovered": {
+                "background": "#3a3d4d",
+                "border": "#8b95c0"
+            },
+            "selected": {
+                "background": "#2E1A1A",
+                "border": "#ff4a7c"
+            },
+            "card_image_background": "#1d1f28"
+        }
+    },
+    "profile_grid": {
+        "background": "#282a36",
+        "border": "#44475c",
+        "title_size": 16,
+        "scrollbar": {
+            "background": "#1d1f28",
+            "handle": "#6f779a"
+        }
+    },
+    "image_preview": {
+        "background": "#282a36",
+        "border_active": "#BB86FC",
+        "border_inactive": "#6f779a"
+    },
     "control_styles": {
         "buttons": {
             "border_radius": 4,
@@ -174,9 +235,9 @@
             "focus_border_width": 2
         },
         "cards": {
-            "border_radius": 8,
-            "padding": 12,
-            "border_width": 0
+            "border_radius": 4,
+            "padding": 5,
+            "border_width": 2
         },
         "labels": {
             "font_size_primary": 14,

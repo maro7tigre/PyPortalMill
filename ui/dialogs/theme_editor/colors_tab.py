@@ -37,6 +37,7 @@ class ColorsTab(QWidget):
         self._create_accent_section(scroll_layout)
         self._create_border_section(scroll_layout)
         self._create_button_states_section(scroll_layout)
+        self._create_profile_cards_section(scroll_layout)
         
         scroll_layout.addStretch()
         scroll.setWidget(scroll_widget)
@@ -399,6 +400,132 @@ class ColorsTab(QWidget):
             for button_type, buttons in self.preview_widgets['button_previews'].items():
                 self._apply_button_style(buttons['normal'], button_type, 'normal')
                 self._apply_button_style(buttons['disabled'], button_type, 'disabled')
+        
+        # Trigger real-time theme update for the app
+        self.parent_dialog.apply_temporary_theme()
+    
+    def _create_profile_cards_section(self, parent_layout):
+        """Create profile cards section with card type variants"""
+        group = QGroupBox("Profile Cards")
+        layout = QVBoxLayout()
+        
+        card_types = [
+            ('neutral', 'Neutral Cards (Purple selected)'),
+            ('success', 'Success Cards (Green selected)'),
+            ('danger', 'Danger Cards (Red selected)')
+        ]
+        
+        for card_type, label in card_types:
+            card_group = self._create_card_type_section(card_type, label)
+            layout.addWidget(card_group)
+        
+        group.setLayout(layout)
+        parent_layout.addWidget(group)
+    
+    def _create_card_type_section(self, card_type, label):
+        """Create section for a specific card type"""
+        group = QGroupBox(label)
+        main_layout = QHBoxLayout()
+        
+        # Color controls for each state on left
+        states_layout = QGridLayout()
+        states_layout.addWidget(QLabel("State"), 0, 0)
+        states_layout.addWidget(QLabel("Background"), 0, 1)
+        states_layout.addWidget(QLabel("Border"), 0, 2)
+        
+        row = 1
+        for state in ['normal', 'hovered', 'selected']:
+            states_layout.addWidget(QLabel(state.capitalize()), row, 0)
+            states_layout.addWidget(self._create_color_button(f'profile_cards.{card_type}.{state}.background'), row, 1)
+            states_layout.addWidget(self._create_color_button(f'profile_cards.{card_type}.{state}.border'), row, 2)
+            row += 1
+        
+        # Add image background color control
+        states_layout.addWidget(QLabel("Image Box BG:"), row, 0)
+        states_layout.addWidget(self._create_color_button(f'profile_cards.{card_type}.card_image_background'), row, 1, 1, 2)
+        row += 1
+        
+        states_layout.setRowStretch(row, 1)  # Add stretch after controls
+        main_layout.addLayout(states_layout)
+        main_layout.addStretch(1)  # Add stretch between controls and preview
+        
+        # Preview cards on right - use actual ProfileItem widgets
+        preview_layout = QVBoxLayout()
+        preview_layout.addWidget(QLabel("Preview:"))
+        
+        # Import ProfileItem here to avoid circular imports
+        from ui.widgets import ProfileItem
+        
+        normal_card = ProfileItem("Sample", is_add_button=False, card_type=card_type)
+        normal_card.selected = False
+        preview_layout.addWidget(normal_card)
+        
+        selected_card = ProfileItem("Selected", is_add_button=False, card_type=card_type)
+        selected_card.set_selected(True)
+        preview_layout.addWidget(selected_card)
+        
+        # Store preview cards
+        if 'card_previews' not in self.preview_widgets:
+            self.preview_widgets['card_previews'] = {}
+        self.preview_widgets['card_previews'][card_type] = {'normal': normal_card, 'selected': selected_card}
+        
+        preview_layout.addStretch()
+        main_layout.addLayout(preview_layout)
+        
+        group.setLayout(main_layout)
+        return group
+    
+    def _apply_card_style(self, card, card_type, state):
+        """Apply style to a preview card - just trigger update on ProfileItem"""
+        # ProfileItem handles its own styling, just trigger update
+        if hasattr(card, 'update_style'):
+            card.update_style()
+
+    
+    def _update_previews(self):
+        """Update all preview elements and apply temporary theme"""
+        # Update background preview
+        if 'background' in self.preview_widgets:
+            self.preview_widgets['background'].setStyleSheet(
+                f"background-color: {self._get_color('backgrounds.primary')}; "
+                f"color: {self._get_color('text.primary')}; "
+                f"border: 1px solid {self._get_color('borders.inactive')}; "
+                f"padding: 10px;"
+            )
+        
+        # Update text labels
+        if 'text_labels' in self.preview_widgets:
+            colors = ['text.primary', 'text.secondary', 'text.disabled', 'text.links']
+            for i, label in enumerate(self.preview_widgets['text_labels']):
+                label.setStyleSheet(f"color: {self._get_color(colors[i])}; background: transparent; font-size: 11pt;")
+        
+        # Update accent boxes
+        if 'accent_boxes' in self.preview_widgets:
+            colors = ['accents.primary', 'accents.secondary', 'accents.warning', 'accents.error']
+            for i, box in enumerate(self.preview_widgets['accent_boxes']):
+                box.setStyleSheet(f"background-color: {self._get_color(colors[i])}; color: white; border-radius: 4px;")
+        
+        # Update border previews
+        if 'border_active' in self.preview_widgets:
+            self.preview_widgets['border_active'].setStyleSheet(
+                f"border: 2px solid {self._get_color('borders.active')}; background: transparent;"
+            )
+        if 'border_inactive' in self.preview_widgets:
+            self.preview_widgets['border_inactive'].setStyleSheet(
+                f"border: 2px solid {self._get_color('borders.inactive')}; background: transparent;"
+            )
+        
+        # Update button previews
+        if 'button_previews' in self.preview_widgets:
+            for button_type, buttons in self.preview_widgets['button_previews'].items():
+                self._apply_button_style(buttons['normal'], button_type, 'normal')
+                self._apply_button_style(buttons['disabled'], button_type, 'disabled')
+        
+        # Update card previews
+        if 'card_previews' in self.preview_widgets:
+            for card_type, frames in self.preview_widgets['card_previews'].items():
+                self._apply_card_style(frames['normal'], card_type, 'normal')
+                self._apply_card_style(frames['selected'], card_type, 'selected')
         
         # Trigger real-time theme update for the app
         self.parent_dialog.apply_temporary_theme()

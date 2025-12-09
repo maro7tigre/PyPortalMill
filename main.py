@@ -16,9 +16,12 @@ def main():
     app.setOrganizationName("PyPortalMill")
     app.setStyle("Fusion")
     
-    # Create and show main window
-    window = MainWindow()
-    window.show()
+    # Initialize Coordinator
+    # (Lazy import to avoid circular dependencies if any, though likely fine here)
+    from core.app_coordinator import AppCoordinator
+    
+    coordinator = AppCoordinator(app)
+    coordinator.start()
     
     # Start event loop
     sys.exit(app.exec())

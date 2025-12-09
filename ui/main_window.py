@@ -3,14 +3,13 @@ Main Window for PyPortalMill application
 """
 
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QMenuBar, QMenu, 
-                               QMessageBox)
+                                QMessageBox)
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 
 from core.theme_manager import get_theme_manager
-from ui.tabs.profiles_tab import ProfilesTab
-from ui.tabs.setup_tab import SetupTab
-from ui.tabs.export_tab import ExportTab
+from ui.tabs.doors_tab import DoorsTab
+from ui.tabs.frames_tab import FramesTab
 
 
 class MainWindow(QMainWindow):
@@ -29,26 +28,50 @@ class MainWindow(QMainWindow):
     
     def _setup_ui(self):
         """Setup the main UI"""
-        self.setWindowTitle("PyPortalMill")
-        self.setMinimumSize(1000, 700)
+        self.setWindowTitle("PyPortalMill - Wizard System")
+        self.setMinimumSize(1200, 800)
         
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        self.setCentralWidget(self.tab_widget)
+        # Create main tab widget with vertical tabs on the left
+        self.main_tabs = QTabWidget()
+        self.main_tabs.setTabPosition(QTabWidget.West)  # Tabs on left side
+        self.setCentralWidget(self.main_tabs)
         
-        # Create tabs
-        self.profiles_tab = ProfilesTab()
-        self.setup_tab = SetupTab()
-        self.export_tab = ExportTab()
+        # Create Doors and Frames tabs
+        self.doors_tab = DoorsTab()
+        self.frames_tab = FramesTab()
         
         # Add tabs
-        self.tab_widget.addTab(self.profiles_tab, "Profiles")
-        self.tab_widget.addTab(self.setup_tab, "Setup")
-        self.tab_widget.addTab(self.export_tab, "Export")
+        self.main_tabs.addTab(self.doors_tab, "🚪 Doors")
+        self.main_tabs.addTab(self.frames_tab, "🖼️ Frames")
     
     def _create_menu_bar(self):
         """Create the menu bar"""
         menubar = self.menuBar()
+        
+        # File menu
+        file_menu = menubar.addMenu("File")
+        
+        # Project actions
+        save_project_action = QAction("Save Project", self)
+        save_project_action.setShortcut("Ctrl+S")
+        save_project_action.triggered.connect(self._save_project)
+        file_menu.addAction(save_project_action)
+        
+        load_project_action = QAction("Load Project", self)
+        load_project_action.setShortcut("Ctrl+O")
+        load_project_action.triggered.connect(self._load_project)
+        file_menu.addAction(load_project_action)
+        
+        file_menu.addSeparator()
+        
+        # Set actions
+        save_set_action = QAction("Save Profile Set", self)
+        save_set_action.triggered.connect(self._save_set)
+        file_menu.addAction(save_set_action)
+        
+        load_set_action = QAction("Load Profile Set", self)
+        load_set_action.triggered.connect(self._load_set)
+        file_menu.addAction(load_set_action)
         
         # View menu
         view_menu = menubar.addMenu("View")
@@ -122,3 +145,24 @@ class MainWindow(QMainWindow):
         # Update menu after dialog closes in case themes were added/deleted
         if result:
             self._update_user_themes_menu(self.select_theme_menu)
+    
+    def _save_project(self):
+        """Save current project (both doors and frames)"""
+        # TODO: Implement project saving
+        QMessageBox.information(self, "Save Project", "Project save functionality to be implemented")
+    
+    def _load_project(self):
+        """Load a project (both doors and frames)"""
+        # TODO: Implement project loading
+        QMessageBox.information(self, "Load Project", "Project load functionality to be implemented")
+    
+    def _save_set(self):
+        """Save current profile set"""
+        # TODO: Implement profile set saving
+        QMessageBox.information(self, "Save Set", "Profile set save functionality to be implemented")
+    
+    def _load_set(self):
+        """Load a profile set"""
+        # TODO: Implement profile set loading
+        QMessageBox.information(self, "Load Set", "Profile set load functionality to be implemented")
+

@@ -251,14 +251,27 @@ class ThemeManager(QObject):
             background-color: {bg_secondary};
         }}
         
+        /* Horizontal tabs (top position) */
         QTabBar::tab {{
             background-color: {bg_tertiary};
             color: {text_secondary};
             padding: 8px 16px;
             border: 1px solid {border_inactive};
+        }}
+        
+        /* Top positioned tabs */
+        QTabBar[orientation="horizontal"]::tab {{
             border-bottom: none;
             border-top-left-radius: {btn_radius}px;
             border-top-right-radius: {btn_radius}px;
+        }}
+        
+        /* Left/West positioned tabs */
+        QTabBar[orientation="vertical"]::tab {{
+            border-right: none;
+            border-top-left-radius: {btn_radius}px;
+            border-bottom-left-radius: {btn_radius}px;
+            padding: 12px 8px;
         }}
         
         QTabBar::tab:selected {{
@@ -372,9 +385,57 @@ class ThemeManager(QObject):
                 return None
         
         return value
+    
+    def get_profile_card_colors(self, card_type: str = "neutral"):
+        """
+        Get profile card colors by type (neutral, success, danger).
+        Returns dict with 'normal', 'hovered', 'selected' states.
+        """
+        if not self.current_theme or 'profile_cards' not in self.current_theme:
+            # Fallback to default colors
+            return {
+                'normal': {'background': '#44475c', 'border': '#6f779a'},
+                'hovered': {'background': '#3a3d4d', 'border': '#8b95c0'},
+                'selected': {'background': '#2d2f3f', 'border': '#BB86FC'}
+            }
+        
+        cards = self.current_theme['profile_cards']
+        if card_type not in cards:
+            card_type = 'neutral'  # Fallback to neutral
+        
+        return cards[card_type]
+    
+    def get_profile_grid_colors(self):
+        """Get profile grid colors (background, border, scrollbar)"""
+        if not self.current_theme or 'profile_grid' not in self.current_theme:
+            # Fallback to default colors
+            return {
+                'background': '#282a36',
+                'border': '#44475c',
+                'title_size': 16,
+                'scrollbar': {
+                    'background': '#1d1f28',
+                    'handle': '#6f779a'
+                }
+            }
+        
+        return self.current_theme['profile_grid']
+    
+    def get_image_preview_colors(self):
+        """Get image preview colors (background, borders)"""
+        if not self.current_theme or 'image_preview' not in self.current_theme:
+            # Fallback to default colors
+            return {
+                'background': '#282a36',
+                'border_active': '#BB86FC',
+                'border_inactive': '#6f779a'
+            }
+        
+        return self.current_theme['image_preview']
 
 
 # Convenience function to get the singleton instance
 def get_theme_manager() -> ThemeManager:
     """Get the ThemeManager singleton instance"""
     return ThemeManager()
+
