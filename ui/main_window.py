@@ -8,8 +8,6 @@ from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 
 from core.theme_manager import get_theme_manager
-from ui.tabs.doors_tab import DoorsTab
-from ui.tabs.frames_tab import FramesTab
 
 
 class MainWindow(QMainWindow):
@@ -36,13 +34,22 @@ class MainWindow(QMainWindow):
         self.main_tabs.setTabPosition(QTabWidget.West)  # Tabs on left side
         self.setCentralWidget(self.main_tabs)
         
-        # Create Doors and Frames tabs
-        self.doors_tab = DoorsTab()
-        self.frames_tab = FramesTab()
+        # Create dynamic tabs from config
+        from core.config_manager import get_config_manager
+        from ui.tabs.generic_wizard_tab import GenericWizardTab
         
-        # Add tabs
-        self.main_tabs.addTab(self.doors_tab, "🚪 Doors")
-        self.main_tabs.addTab(self.frames_tab, "🖼️ Frames")
+        config_manager = get_config_manager()
+        self.wizard_tabs = []
+        
+        for tab_config in config_manager.get_tabs():
+            tab = GenericWizardTab(tab_config)
+            self.main_tabs.addTab(tab, tab_config.name)
+            self.wizard_tabs.append(tab)
+            
+        # Fallback if config is empty (just for safety during dev)
+        if not self.wizard_tabs:
+            print("WARNING: No tabs found in config! Check settings.json")
+
     
     def _create_menu_bar(self):
         """Create the menu bar"""
@@ -98,32 +105,101 @@ class MainWindow(QMainWindow):
         theme_editor_action.triggered.connect(self._open_theme_editor)
         select_theme_menu.addAction(theme_editor_action)
         
-        # Store reference to menu for updates
-        self.select_theme_menu = select_theme_menu
+        # Configuration menu
+        config_menu = menubar.addMenu("Configuration")
         
-        # Populate user themes initially
-        self.user_themes_actions = []
-        self._update_user_themes_menu(select_theme_menu)
-    
-    def _update_user_themes_menu(self, menu):
-        """Update user themes in the menu"""
-        # Remove old user theme actions
-        for action in self.user_themes_actions:
-            menu.removeAction(action)
-        self.user_themes_actions.clear()
+        # Select Config submenu
+        select_config_menu = config_menu.addMenu("Select Configuration")
         
-        # Add current user themes
-        user_theme_names = self.theme_manager.get_user_theme_names()
-        for theme_name in user_theme_names:
-            action = QAction(theme_name, self)
-            action.triggered.connect(lambda checked, name=theme_name: self._on_theme_selected(name))
-            # Insert before the theme editor separator
-            menu.insertAction(self.theme_editor_separator, action)
-            self.user_themes_actions.append(action)
-    
+        # Separator for user configs
+        self.config_editor_separator = select_config_menu.addSeparator()
+        
+        # Config Editor option
+        config_editor_action = QAction("Config Editor...", self)
+        config_editor_action.triggered.connect(self._open_config_editor)
+        select_config_menu.addAction(config_editor_action)
+        
+        # Store reference for updates
+        self.select_config_menu = select_config_menu
+        self.config_actions = []
+        
+        # Populate configs
+        self._update_config_menu()
+
+    def _update_config_menu(self):
+        """Update configurations in the menu"""
+        # Remove old actions
+        for action in self.config_actions:
+            self.select_config_menu.removeAction(action)
+        self.config_actions.clear()
+        
+        # Add available configs
+        from core.config_manager import get_config_manager
+        cm = get_config_manager()
+        
+        for config_name in cm.get_available_configs():
+            action = QAction(config_name, self)
+            action.setCheckable(True)
+            action.setChecked(config_name == cm.current_config_name)
+            action.triggered.connect(lambda checked, name=config_name: self._on_config_selected(name))
+            
+            # Insert before separator
+            self.select_config_menu.insertAction(self.config_editor_separator, action)
+            self.config_actions.append(action)
+
+    def _on_config_selected(self, config_name: str):
+        """Handle config selection"""
+        from core.config_manager import get_config_manager
+        cm = get_config_manager()
+        if cm.set_config(config_name):
+            self._update_config_menu() # Update checkmarks
+
+    def _open_config_editor(self):
+        """Open config editor dialog"""
+        from ui.dialogs.config_editor_dialog import ConfigEditorDialog
+        from core.config_manager import get_config_manager
+        
+        # Simple selection dialog or direct open?
+        # For now, let's open the editor with "Select/Create" mode or just list valid configs.
+        # Implemented similar to Theme Editor logic where you select what to edit in the dialog or passed in.
+        # But ConfigEditorDialog currently takes a specific config.
+        # Let's create a wrapper or simple selection input first?
+        # Actually, let's just default to editing the CURRENT config, and inside the dialog allow switching/creating?
+        # The current ConfigEditorDialog takes (parent, mode, name). 
+        # Let's allow picking a config to edit via a small intermediate dialog OR
+        # just open a selection dialog similar to ThemeSelectionDialog. 
+        # For MVP, let's open a selection dialog first.
+        
+        # Let's create a quick ConfigSelectionDialog similar to ThemeSelectionDialog
+        from ui.dialogs.config_selection_dialog import ConfigSelectionDialog
+        dialog = ConfigSelectionDialog(self)
+        if dialog.exec():
+            self._update_config_menu()
+
     def _connect_signals(self):
         """Connect signals and slots"""
         self.theme_manager.theme_changed.connect(self._apply_theme)
+        
+        # Connect config changed signal to reload tabs
+        from core.config_manager import get_config_manager
+        get_config_manager().config_changed.connect(self._on_config_changed)
+    
+    def _on_config_changed(self, config_name: str):
+        """Handle configuration changes"""
+        # Re-create tabs
+        self.main_tabs.clear()
+        self.wizard_tabs = []
+        
+        from core.config_manager import get_config_manager
+        from ui.tabs.generic_wizard_tab import GenericWizardTab
+        
+        config_manager = get_config_manager()
+        for tab_config in config_manager.get_tabs():
+            tab = GenericWizardTab(tab_config)
+            self.main_tabs.addTab(tab, tab_config.name)
+            self.wizard_tabs.append(tab)
+            
+        self._update_config_menu() # Ensure menu is in sync
     
     def _on_theme_selected(self, theme_name: str):
         """Handle theme selection from menu"""

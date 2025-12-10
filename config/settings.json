@@ -1,0 +1,122 @@
+{
+    "tabs": [
+        {
+            "id": "doors",
+            "name": "🚪 Doors",
+            "profiles": [
+                {
+                    "id": "hinge",
+                    "name": "Hinge Type",
+                    "type": "hardware",
+                    "shared_with": [
+                        "frames.hinge"
+                    ]
+                },
+                {
+                    "id": "lock",
+                    "name": "Lock Type",
+                    "type": "hardware",
+                    "shared_with": [
+                        "frames.lock"
+                    ]
+                }
+            ],
+            "parameter_sections": [
+                {
+                    "id": "dimensions",
+                    "title": "Dimensions",
+                    "position": "left",
+                    "grouped_auto": {
+                        "enabled": true,
+                        "label": "Auto Calculate",
+                        "controlled_params": [
+                            "width",
+                            "height"
+                        ],
+                        "default_active": true
+                    },
+                    "parameters": [
+                        {
+                            "name": "width",
+                            "label": "Width",
+                            "type": "float",
+                            "default": 800,
+                            "min": 100,
+                            "max": 3000
+                        },
+                        {
+                            "name": "height",
+                            "label": "Height",
+                            "type": "float",
+                            "default": 2000,
+                            "min": 100,
+                            "max": 4000
+                        }
+                    ]
+                },
+                {
+                    "id": "properties",
+                    "title": "Door Properties",
+                    "position": "right",
+                    "parameters": [
+                        {
+                            "name": "thickness",
+                            "label": "Thickness",
+                            "type": "float",
+                            "default": 40,
+                            "has_auto": true
+                        },
+                        {
+                            "name": "material",
+                            "label": "Material",
+                            "type": "enum",
+                            "options": [
+                                "Wood",
+                                "Metal",
+                                "Glass"
+                            ],
+                            "default": "Wood"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "frames",
+            "name": "🖼️ Frames",
+            "profiles": [
+                {
+                    "id": "hinge",
+                    "name": "Hinge Type",
+                    "type": "hardware",
+                    "shared_with": [
+                        "doors.hinge"
+                    ]
+                },
+                {
+                    "id": "lock",
+                    "name": "Lock Type",
+                    "type": "hardware",
+                    "shared_with": [
+                        "doors.lock"
+                    ]
+                }
+            ],
+            "parameter_sections": [
+                {
+                    "id": "frame_dims",
+                    "title": "Frame Dimensions",
+                    "position": "left",
+                    "parameters": [
+                        {
+                            "name": "jamb_width",
+                            "label": "Jamb Width",
+                            "type": "float",
+                            "default": 100
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -85,16 +85,21 @@ class FramesParameterSet:
 @dataclass
 class ProjectData:
     """
-    The Root Data Object matching profiles/current.json structure.
+    The Root Data Object matching the new dynamic configuration structure.
     """
-    hinge_types: Dict[str, HardwareType] = field(default_factory=dict)
-    hinge_profiles: Dict[str, HardwareProfile] = field(default_factory=dict)
+    # Hardware Types definitions (loaded from disk/config, but maybe stored here for portability)
+    # Key = type_id (e.g., "hinge", "lock")
+    hardware_types: Dict[str, Dict[str, HardwareType]] = field(default_factory=dict)
     
-    lock_types: Dict[str, HardwareType] = field(default_factory=dict)
-    lock_profiles: Dict[str, HardwareProfile] = field(default_factory=dict)
+    # User-configured Profiles
+    # Key = type_id (e.g., "hinge", "lock") -> Profile Name -> HardwareProfile
+    hardware_profiles: Dict[str, Dict[str, HardwareProfile]] = field(default_factory=dict)
     
-    frame_config: Optional[FrameConfig] = None
+    # Global/Tab settings
+    # Key = tab_id (e.g. "doors", "frames") -> config object
+    tab_configurations: Dict[str, Any] = field(default_factory=dict)
     
-    # New: Parameter sets for wizard system
-    doors_params: Optional[DoorsParameterSet] = None
-    frames_params: Optional[FramesParameterSet] = None
+    # Parameter values for each context
+    # Key = context_id (e.g., "doors", "frames") -> param_name -> value
+    parameter_values: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+

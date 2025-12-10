@@ -2,43 +2,42 @@
 Configure Step
 
 Second step in the wizard: Configure parameters and preview.
-Adapted from the old FrameTab with exact same UI but integrated with new architecture.
+Fully data-driven based on TabConfig.
 """
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QSizePolicy, QScrollArea
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
 from ui.widgets import (ThemedSplitter, ThemedLabel, ThemedGroupBox, ThemedRadioButton,
                         ThemedSpinBox, ClickableLabel, ScaledPreviewLabel)
-
+from ui.widgets.parameter_factory import SectionWidget
+from core.config_manager import TabConfig
 
 class ConfigureStep(QWidget):
     """
-    Configuration step with exact same 3-panel layout as old FrameTab.
+    Configuration step with 3-panel layout.
     
     Layout:
-    - Left panel: Frame dimensions, PM positions, parameter preview
+    - Left panel: Parameters configured with position="left"
     - Middle panel: Orientation selector, preview widget
-    - Right panel: Lock config, hinge config, component order
+    - Right panel: Parameters configured with position="right"
     """
     
-    def __init__(self, context: str, parent=None):
+    def __init__(self, context: str, tab_config: TabConfig, parent=None):
         """
         Initialize configure step.
         
         Args:
-            context: "frames" or "doors" - determines which parameters to show
+            context: Context string (e.g. "doors", "frames")
+            tab_config: Configuration object for this tab
             parent: Parent widget
         """
         super().__init__(parent)
         self.context = context
-        
-        # Auto-calculation control
-        self._auto_calculation_running = False
+        self.tab_config = tab_config
         
         self.setup_ui()
-        self.connect_signals()
     
     def setup_ui(self):
         """Initialize user interface with three-panel layout"""
@@ -49,177 +48,85 @@ class ConfigureStep(QWidget):
         content_splitter = ThemedSplitter(Qt.Horizontal)
         main_layout.addWidget(content_splitter)
         
-        # Left panel
-        left_widget = self.create_left_panel()
-        content_splitter.addWidget(left_widget)
+        # Left panel (Scrollable)
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QScrollArea.NoFrame)
+        left_content = QWidget()
+        self.left_layout = QVBoxLayout(left_content)
+        self.left_layout.setContentsMargins(0,0,10,0)
+        left_scroll.setWidget(left_content)
         
-        # Middle panel (preview)
+        # Middle panel (Fixed/Preview)
         middle_widget = self.create_middle_panel()
-        content_splitter.addWidget(middle_widget)
         
-        # Right panel
-        right_widget = self.create_right_panel()
-        content_splitter.addWidget(right_widget)
+        # Right panel (Scrollable)
+        right_scroll = QScrollArea()
+        right_scroll.setWidgetResizable(True)
+        right_scroll.setFrameShape(QScrollArea.NoFrame)
+        right_content = QWidget()
+        self.right_layout = QVBoxLayout(right_content)
+        self.right_layout.setContentsMargins(10,0,0,0)
+        right_scroll.setWidget(right_content)
+        
+        # Add widgets to splitter
+        content_splitter.addWidget(left_scroll)
+        content_splitter.addWidget(middle_widget)
+        content_splitter.addWidget(right_scroll)
         
         # Set initial splitter sizes
-        content_splitter.setSizes([300, 400, 300])
-    
-    def create_left_panel(self):
-        """Create left panel with frame dimensions and PM positions"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        content_splitter.setSizes([350, 400, 350])
         
-        # Frame dimensions group
-        frame_group = ThemedGroupBox("Frame Configuration")
-        frame_layout = QFormLayout()
-        frame_group.setLayout(frame_layout)
+        # Populate parameter sections
+        self.populate_sections()
         
-        # TODO: Add DollarVariableLineEdit widgets for:
-        # - Frame height
-        # - Frame width
-        # - Frame depth
-        # - Door width
-        # - Hinge width
-        # - Machine offsets (x, y, z)
-        
-        # Placeholder for now
-        frame_layout.addRow("Frame Height (mm):", ThemedLabel("TODO: Input"))
-        frame_layout.addRow("Frame Width (mm):", ThemedLabel("TODO: Input"))
-        
-        layout.addWidget(frame_group)
-        
-        # PM positions group
-        pm_group = ThemedGroupBox("PM Positions")
-        pm_layout = QVBoxLayout()
-        pm_group.setLayout(pm_layout)
-        
-        # TODO: Add PM auto checkbox and position inputs
-        pm_layout.addWidget(ThemedLabel("TODO: PM Controls"))
-        
-        layout.addWidget(pm_group)
-        
-        # Parameter preview
-        preview_group = ThemedGroupBox("Parameter Preview")
-        preview_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-        preview_layout = QVBoxLayout()
-        preview_group.setLayout(preview_layout)
-        
-        self.param_preview = ScaledPreviewLabel()
-        self.param_preview.setText("No preview")
-        preview_layout.addWidget(self.param_preview, 1)
-        
-        layout.addWidget(preview_group, 1)
-        
-        return widget
+    def populate_sections(self):
+        """Populate left and right panels with sections from config"""
+        for section_config in self.tab_config.parameter_sections:
+            section_widget = SectionWidget(section_config)
+            
+            if section_config.position == "left":
+                self.left_layout.addWidget(section_widget)
+            else:
+                self.right_layout.addWidget(section_widget)
+                
+        # Add stretch to push content to top
+        self.left_layout.addStretch()
+        self.right_layout.addStretch()
     
     def create_middle_panel(self):
         """Create middle panel with preview and orientation switch"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
+        layout.setContentsMargins(10, 0, 10, 0)
         
-        # Orientation switch with G-code edit links
-        orientation_group = ThemedGroupBox("Door Orientation")
+        # Orientation (Hardcoded for now as it seems standard, but could be config too)
+        # Only show if not specifically disabled in config, or we just leave it as Standard UI
+        orientation_group = ThemedGroupBox("Orientation")
         orientation_layout = QVBoxLayout()
         orientation_group.setLayout(orientation_layout)
         
-        # Radio buttons layout
         radio_layout = QHBoxLayout()
-        
-        # TODO: Use DollarVariableRadioGroup for orientation
-        self.right_radio = ThemedRadioButton("Right (droite)")
-        self.left_radio = ThemedRadioButton("Left (gauche)")
+        self.right_radio = ThemedRadioButton("Right (Standard)")
+        self.left_radio = ThemedRadioButton("Left (Reverse)")
         
         radio_layout.addWidget(self.right_radio)
-        self.right_gcode_link = ClickableLabel("Edit")
-        # self.right_gcode_link.clicked.connect(self.edit_right_gcode)
-        radio_layout.addWidget(self.right_gcode_link)
-        
         radio_layout.addStretch()
-        
         radio_layout.addWidget(self.left_radio)
-        self.left_gcode_link = ClickableLabel("Edit")
-        # self.left_gcode_link.clicked.connect(self.edit_left_gcode)
-        radio_layout.addWidget(self.left_gcode_link)
         
         orientation_layout.addLayout(radio_layout)
-        
         layout.addWidget(orientation_group)
         
-        # Preview area
-        # TODO: Add FramePreview widget
-        preview_placeholder = ThemedLabel("Preview Widget")
-        preview_placeholder.setStyleSheet("QLabel { font-size: 14pt; padding: 20px; background-color: #1e1e1e; }")
-        preview_placeholder.setAlignment(Qt.AlignCenter)
-        layout.addWidget(preview_placeholder, 1)
+        # Preview Area
+        preview_group = ThemedGroupBox("Preview")
+        preview_layout = QVBoxLayout()
+        preview_group.setLayout(preview_layout)
+        
+        # Placeholder or Real Preview
+        self.preview_label = ScaledPreviewLabel()
+        self.preview_label.setText("No Preview")
+        preview_layout.addWidget(self.preview_label, 1)
+        
+        layout.addWidget(preview_group, 1)
         
         return widget
-    
-    def create_right_panel(self):
-        """Create right panel with lock and hinge configuration"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        
-        # Lock configuration
-        lock_group = ThemedGroupBox("Lock Configuration")
-        lock_layout = QVBoxLayout()
-        lock_group.setLayout(lock_layout)
-        
-        # TODO: Add lock controls:
-        # - Auto checkbox and position
-        # - Y offset with auto
-        # - Active checkbox
-        lock_layout.addWidget(ThemedLabel("TODO: Lock Controls"))
-        
-        layout.addWidget(lock_group)
-        
-        # Hinge configuration
-        hinge_group = ThemedGroupBox("Hinge Configuration")
-        hinge_layout = QVBoxLayout()
-        hinge_group.setLayout(hinge_layout)
-        
-        # Hinge count selector
-        count_layout = QHBoxLayout()
-        count_layout.addWidget(ThemedLabel("Number of Hinges:"))
-        self.hinge_count_spin = ThemedSpinBox()
-        self.hinge_count_spin.setRange(0, 4)
-        self.hinge_count_spin.setValue(3)
-        # self.hinge_count_spin.valueChanged.connect(self.update_hinge_count)
-        count_layout.addWidget(self.hinge_count_spin)
-        count_layout.addStretch()
-        hinge_layout.addLayout(count_layout)
-        
-        # TODO: Add hinge controls:
-        # - Auto checkbox
-        # - Position inputs (dynamic based on count)
-        # - Y offset with auto
-        hinge_layout.addWidget(ThemedLabel("TODO: Hinge Controls"))
-        
-        layout.addWidget(hinge_group)
-        
-        # Execution order widget
-        order_group = ThemedGroupBox("Component Order")
-        order_layout = QVBoxLayout()
-        order_group.setLayout(order_layout)
-        
-        # TODO: Add OrderWidget
-        order_layout.addWidget(ThemedLabel("TODO: Order Widget"))
-        
-        layout.addWidget(order_group, 1)
-        
-        return widget
-    
-    def connect_signals(self):
-        """Connect widget signals"""
-        # TODO: Connect all widget signals
-        pass
-    
-    def run_auto_calculations(self):
-        """Run auto-calculation system for dependent parameters"""
-        # TODO: Implement auto-calculation logic from old FrameTab
-        # This includes: lock position, hinge positions, PM positions, Y offsets
-        pass
-    
-    def update_preview(self):
-        """Update the preview widget with current parameters"""
-        # TODO: Implement preview update logic
-        pass
