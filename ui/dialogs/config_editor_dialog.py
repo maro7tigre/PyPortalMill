@@ -171,15 +171,17 @@ class ConfigEditorDialog(QDialog):
         
         self.left_tree = DraggableTreeWidget()
         self.left_tree.itemClicked.connect(self._on_tree_item_selected)
-        self.left_tree.item_dropped.connect(self._on_item_dropped)
+        self.left_tree.drop_requested.connect(lambda t, p: self._handle_drop(self.left_tree, t, p))
         
         self.right_tree = DraggableTreeWidget()
         self.right_tree.itemClicked.connect(self._on_tree_item_selected)
-        self.right_tree.item_dropped.connect(self._on_item_dropped)
+        self.right_tree.drop_requested.connect(lambda t, p: self._handle_drop(self.right_tree, t, p))
         
         columns_splitter.addWidget(self.left_tree)
         columns_splitter.addWidget(self.right_tree)
         layout_layout.addWidget(columns_splitter)
+        
+        self._setup_selection_logic()
         
         self.workspace_tabs.addTab(self.layout_widget, "Layout")
         
@@ -330,22 +332,34 @@ class ConfigEditorDialog(QDialog):
             del tab.profiles[row]
             self._rebuild_workspace()
 
+    def _setup_selection_logic(self):
+        # Enforce exclusive selection between trees
+        self.left_tree.itemPressed.connect(lambda: self.right_tree.clearSelection())
+        self.left_tree.itemPressed.connect(lambda: self.right_tree.setCurrentItem(None))
+        
+        self.right_tree.itemPressed.connect(lambda: self.left_tree.clearSelection())
+        self.right_tree.itemPressed.connect(lambda: self.left_tree.setCurrentItem(None))
+
     def _add_section(self):
         tab = self._get_current_tab()
         if not tab: return
         
         # Decide which tree is active or default to Left
         pos = "left"
-        # If right tree has focus or selection? 
-        if self.right_tree.hasFocus(): pos = "right"
+        if self.right_tree.selectedItems(): pos = "right"
         
         new_sec = ParameterSectionConfig(id=f"sec_{len(tab.parameter_sections)+1}", title="New Section", position=pos, parameters=[])
         tab.parameter_sections.append(new_sec)
         self._rebuild_workspace()
         
     def _add_parameter(self):
-        # Add to selected section
-        tree = self.left_tree if self.left_tree.hasFocus() else self.right_tree
+        # Find active tree
+        tree = None
+        if self.left_tree.selectedItems(): tree = self.left_tree
+        elif self.right_tree.selectedItems(): tree = self.right_tree
+        
+        if not tree: return
+        
         item = tree.currentItem()
         if not item: return
         
@@ -360,7 +374,12 @@ class ConfigEditorDialog(QDialog):
 
     def _del_layout_item(self):
         # Remove selected item
-        tree = self.left_tree if self.left_tree.hasFocus() else self.right_tree
+        tree = None
+        if self.left_tree.selectedItems(): tree = self.left_tree
+        elif self.right_tree.selectedItems(): tree = self.right_tree
+        
+        if not tree: return
+        
         item = tree.currentItem()
         if not item: return
         
@@ -369,38 +388,123 @@ class ConfigEditorDialog(QDialog):
         tab = self._get_current_tab()
         
         if role == "section":
-            tab.parameter_sections.remove(obj)
+            if obj in tab.parameter_sections:
+                 tab.parameter_sections.remove(obj)
         elif role == "parameter":
             section_item = item.parent()
-            section = section_item.data(0, Qt.UserRole + 1)
-            section.parameters.remove(obj)
+            if section_item:
+                section = section_item.data(0, Qt.UserRole + 1)
+                if obj in section.parameters:
+                    section.parameters.remove(obj)
             
         self._rebuild_workspace()
 
-    def _on_item_dropped(self, source, target):
-        # Handle logic after visual drop (if we did internal move, we verify data model)
-        # However, QTreeWidget InternalMove just moves the Item. We need to sync Data Model.
-        # This is complex with InternalMove. Better to Rebuild Data Model from Trees before Save?
-        # OR: intercept drop and move data manually. 
-        # For this MVP, let's Rebuild the section list from Tree state on Save? 
-        # No, that's risky. better to implement drop properly.
-        # But `item_dropped` signal from DraggableTree isn't fully implemented in the widget above.
-        # Let's simplify: when Saving, we will iterate the trees to rebuild `tab.parameter_sections`.
-        pass
+    def _handle_drop(self, target_tree, target_item, drop_pos):
+        """
+        MVC Handler for Drag and Drop.
+        Manipulates data model then rebuilds UI.
+        """
+        tab = self._get_current_tab()
+        if not tab: return
+
+        # Identify Source
+        source_tree = None
+        if self.left_tree.selectedItems(): source_tree = self.left_tree
+        elif self.right_tree.selectedItems(): source_tree = self.right_tree
+        
+        if not source_tree: return # Should not happen if dragging
+        
+        source_item = source_tree.currentItem()
+        if not source_item: return
+        
+        source_role = source_item.data(0, Qt.UserRole)
+        source_obj = source_item.data(0, Qt.UserRole + 1)
+        
+        # Logic for SECTIONS
+        if source_role == "section":
+            # Target position logic
+            target_col = "left" if target_tree == self.left_tree else "right"
+            
+            # Remove from list
+            if source_obj in tab.parameter_sections:
+                tab.parameter_sections.remove(source_obj)
+            
+            # Update position attribute
+            source_obj.position = target_col
+            
+            # Insert at new position
+            if target_item:
+                target_role = target_item.data(0, Qt.UserRole)
+                target_obj = target_item.data(0, Qt.UserRole + 1)
+                
+                # Verify we are inserting relative to a section in the list
+                if target_role == "section":
+                    # Find index of target_obj
+                    try:
+                        idx = tab.parameter_sections.index(target_obj)
+                        # Adjust based on drop pos (above/below)
+                        if drop_pos == QTreeWidget.BelowItem:
+                             idx += 1
+                        tab.parameter_sections.insert(idx, source_obj)
+                    except ValueError:
+                        tab.parameter_sections.append(source_obj) # Fallback
+                else:
+                     # Dropped on a parameter, put after its section?
+                     # Rough logic: append to end of list for now or find section
+                     tab.parameter_sections.append(source_obj)
+            else:
+                # Dropped on whitespace/root
+                tab.parameter_sections.append(source_obj)
+                
+        # Logic for PARAMETERS
+        elif source_role == "parameter":
+            # Find Source Section
+            source_parent_item = source_item.parent()
+            if not source_parent_item: return
+            source_section = source_parent_item.data(0, Qt.UserRole + 1)
+            
+            # Identify Target Section
+            target_section = None
+            insert_idx = -1
+            
+            if target_item:
+                target_role = target_item.data(0, Qt.UserRole)
+                target_obj = target_item.data(0, Qt.UserRole + 1)
+                
+                if target_role == "section":
+                    target_section = target_obj
+                    insert_idx = 0 if drop_pos == QTreeWidget.AboveItem else len(target_section.parameters)
+                elif target_role == "parameter":
+                     target_parent = target_item.parent()
+                     if target_parent:
+                         target_section = target_parent.data(0, Qt.UserRole + 1)
+                         try:
+                             insert_idx = target_section.parameters.index(target_obj)
+                             if drop_pos == QTreeWidget.BelowItem:
+                                 insert_idx += 1
+                         except ValueError:
+                             insert_idx = len(target_section.parameters)
+            else:
+                # Dropped on root/empty space of a tree
+                # Use last section of that tree? Or create new?
+                # Probably ignore.
+                pass
+                
+            if target_section:
+                # Remove from source
+                if source_obj in source_section.parameters:
+                    source_section.parameters.remove(source_obj)
+                
+                # Add to target
+                if insert_idx >= 0:
+                     target_section.parameters.insert(insert_idx, source_obj)
+                else:
+                     target_section.parameters.append(source_obj)
+
+        self._rebuild_workspace()
 
     def _save(self):
         # Reconstruct Data from UI State (Trees specifically) for each tab
-        # Actually we need to do this for the current state of Trees to the Data Objects
-        # BUT, the user might have switched tabs. So we should sync on Tab Switch?
-        # Or better: The Data Objects are shared pointers. If we move items in Tree, 
-        # we MUST update the list `section.parameters`. 
-        
-        # Since Drag&Drop moves Visual Items but not the underlying data structure links automatically,
-        # we need to fix this.
-        # Correct approach: Sync Tree state to objects before switching tabs or saving.
-        
-        self._sync_current_tab_layout()
-        
         name = self.name_input.text().strip()
         if not name:
             QMessageBox.warning(self, "Error", "Config name cannot be empty.")
@@ -432,41 +536,3 @@ class ConfigEditorDialog(QDialog):
             self.accept()
         else:
              QMessageBox.critical(self, "Error", "Failed to save configuration.")
-
-    def _sync_current_tab_layout(self):
-        # Re-read the layout from trees into the current tab object
-        tab = self._get_current_tab()
-        if not tab: return
-        
-        new_sections = []
-        
-        # Process Left Tree
-        iterator = QTreeWidgetItemIterator(self.left_tree)
-        while iterator.value():
-            item = iterator.value()
-            if item.data(0, Qt.UserRole) == "section":
-                sec = item.data(0, Qt.UserRole + 1)
-                sec.position = "left"
-                sec.parameters = [] # Clear and rebuild
-                for i in range(item.childCount()):
-                    param_item = item.child(i)
-                    sec.parameters.append(param_item.data(0, Qt.UserRole + 1))
-                new_sections.append(sec)
-            iterator += 1
-            
-        # Process Right Tree
-        iterator = QTreeWidgetItemIterator(self.right_tree)
-        while iterator.value():
-            item = iterator.value()
-            if item.data(0, Qt.UserRole) == "section":
-                sec = item.data(0, Qt.UserRole + 1)
-                sec.position = "right"
-                sec.parameters = [] 
-                for i in range(item.childCount()):
-                    param_item = item.child(i)
-                    sec.parameters.append(param_item.data(0, Qt.UserRole + 1))
-                new_sections.append(sec)
-            iterator += 1
-            
-        tab.parameter_sections = new_sections
-

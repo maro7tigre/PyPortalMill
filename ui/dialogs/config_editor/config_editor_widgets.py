@@ -7,14 +7,17 @@ from PySide6.QtGui import QDrag, QAction
 class DraggableTreeWidget(QTreeWidget):
     """
     Tree widget supporting drag and drop of Sections and Parameters.
+    Emits a signal for the controller to handle the data update.
     """
-    item_dropped = Signal(object, object) # source_item, target_item
+    # Emits (target_item, drop_indicator_position)
+    drop_requested = Signal(object, object) 
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
-        self.setDragDropMode(QTreeWidget.InternalMove)
+        self.setDragDropMode(QTreeWidget.DragDrop)
+        self.setDefaultDropAction(Qt.MoveAction)
         self.setSelectionMode(QTreeWidget.SingleSelection)
         self.setHeaderHidden(True)
         
@@ -22,44 +25,18 @@ class DraggableTreeWidget(QTreeWidget):
         return ['application/x-qabstractitemmodeldatalist']
 
     def dropEvent(self, event):
-        # Default implementation for internal move is often sufficient for visual correctness
-        # but we might need to intercept to update the underlying data model logic 
-        # (e.g., prevent dropping a Section into a Parameter)
+        # We override dropEvent to INTERCEPT the drop.
+        # We do NOT call super().dropEvent(event) because we don't want the visual move 
+        # to happen automatically. We want the Controller to update the Data and Rebuild.
         
-        # Determine target
-        target_item = self.itemAt(event.position().toPoint())
+        target = self.itemAt(event.position().toPoint())
+        drop_pos = self.dropIndicatorPosition()
         
-        # If target is None, we are dropping at root level (Section)
-        if target_item is None:
-             super().dropEvent(event)
-             return
-             
-        # Check source type (we rely on selected item as source since it's single selection)
-        source_item = self.currentItem()
-        if not source_item:
-            event.ignore()
-            return
-            
-        source_type = source_item.data(0, Qt.UserRole) # "section" or "parameter"
-        target_type = target_item.data(0, Qt.UserRole)
+        # Accept the event so the drag operation concludes
+        event.accept()
         
-        # Rule: Sections cannot be inside Sections or Parameters
-        if source_type == "section" and target_item is not None:
-             event.ignore()
-             return
-             
-        # Rule: Parameters can be inside Sections, but not inside Parameters
-        if source_type == "parameter":
-            if target_type == "parameter":
-                # If dropping on a parameter, move to its parent section
-                # Or just ignore to keep it simple (must drop on Section)
-                event.ignore()
-                return
-            elif target_type == "section":
-                super().dropEvent(event)
-                return
-        
-        event.ignore()
+        # Emit signal for the dialog to handle data changes
+        self.drop_requested.emit(target, drop_pos)
 
 class PropertiesEditor(QWidget):
     """
@@ -115,7 +92,8 @@ class PropertiesEditor(QWidget):
     def _build_section_form(self, section):
         self._add_text_input("ID", section, "id")
         self._add_text_input("Title", section, "title")
-        self._add_combo("Position", section, "position", ["left", "right"])
+        # Position is now determined by the UI column (Left/Right Tree), so we remove the edit field.
+        # self._add_combo("Position", section, "position", ["left", "right"])
 
     def _build_parameter_form(self, param):
         self._add_text_input("Name", param, "name")
