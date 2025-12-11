@@ -9,13 +9,15 @@ from dataclasses import asdict
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
                                QLabel, QLineEdit, QMessageBox, QComboBox, 
                                QTreeWidget, QTreeWidgetItem, QSplitter, QTreeWidgetItemIterator,
-                               QWidget, QListWidget, QTabWidget, QToolBar, QMenu)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QIcon
+                               QWidget, QListWidget, QTabWidget, QToolBar, QMenu,
+                               QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsEllipseItem)
+from PySide6.QtCore import Qt, QRectF
+from PySide6.QtGui import QAction, QIcon, QPen, QBrush, QColor, QPainter
 
 from core.config_manager import (get_config_manager, TabConfig, ProfileConfig, 
-                                 ParameterSectionConfig, ParameterConfig, GroupedAutoConfig)
+                                 ParameterSectionConfig, ParameterConfig, GroupedAutoConfig, PreviewShapeConfig)
 from ui.dialogs.config_editor.config_editor_widgets import DraggableTreeWidget, PropertiesEditor
+from ui.widgets.preview_widget import ShapePreviewWidget
 
 class ConfigEditorDialog(QDialog):
     """Main config editor dialog"""
@@ -79,10 +81,26 @@ class ConfigEditorDialog(QDialog):
                         id=s.get("id"), title=s.get("title", ""), position=s.get("position", "left"),
                         parameters=params, grouped_auto=ga
                     ))
+                # Parse Preview Shapes
+                preview_shapes = []
+                for shape in tab_data.get("preview", []):
+                    preview_shapes.append(PreviewShapeConfig(
+                        id=shape.get("id", f"shape_{len(preview_shapes)}"),
+                        type=shape.get("type", "rectangle"),
+                        x=shape.get("x", 0.0),
+                        y=shape.get("y", 0.0),
+                        width=shape.get("width", 50.0),
+                        height=shape.get("height", 50.0),
+                        color=shape.get("color", "#CCCCCC"),
+                        border_color=shape.get("border_color", "#000000"),
+                        border_width=shape.get("border_width", 1)
+                    ))
+                
                 self.tabs.append(TabConfig(
                     id=tab_data.get("id"), name=tab_data.get("name"), 
                     profiles=profiles, parameter_sections=sections,
-                    profile_validation=tab_data.get("profile_validation", "none")
+                    profile_validation=tab_data.get("profile_validation", "none"),
+                    preview=preview_shapes
                 ))
 
     def _setup_ui(self):
@@ -184,6 +202,40 @@ class ConfigEditorDialog(QDialog):
         self._setup_selection_logic()
         
         self.workspace_tabs.addTab(self.layout_widget, "Layout")
+
+        # Preview Sub-Tab
+        self.preview_widget = QWidget()
+        preview_layout = QHBoxLayout(self.preview_widget)
+        
+        # Left: Shape List
+        preview_left_layout = QVBoxLayout()
+        preview_toolbar = QHBoxLayout()
+        add_rect_btn = QPushButton("Add Rect")
+        add_rect_btn.clicked.connect(self._add_preview_rect)
+        add_circle_btn = QPushButton("Add Circle")
+        add_circle_btn.clicked.connect(self._add_preview_circle)
+        del_shape_btn = QPushButton("Remove")
+        del_shape_btn.clicked.connect(self._del_preview_shape)
+        preview_toolbar.addWidget(add_rect_btn)
+        preview_toolbar.addWidget(add_circle_btn)
+        preview_toolbar.addWidget(del_shape_btn)
+        preview_left_layout.addLayout(preview_toolbar)
+        
+        self.preview_tree = DraggableTreeWidget()
+        self.preview_tree.itemClicked.connect(self._on_preview_item_selected)
+        self.preview_tree.drop_requested.connect(self._handle_shape_drop)
+        preview_left_layout.addWidget(self.preview_tree)
+        
+        preview_layout.addLayout(preview_left_layout, 1) # Stretch 1
+        
+        # Right: Visual Preview
+        self.preview_widget_view = ShapePreviewWidget() # Renamed to avoid confusion or just self.preview_view works?
+        # Let's call it self.preview_area_widget to differentiate from the container widget
+        # Actually better to replace self.preview_view with this instance.
+        self.preview_view = ShapePreviewWidget()
+        preview_layout.addWidget(self.preview_view, 2) # Stretch 2
+        
+        self.workspace_tabs.addTab(self.preview_widget, "Preview")
         
         center_layout.addWidget(self.workspace_tabs)
         splitter.addWidget(center_widget)
@@ -267,6 +319,16 @@ class ConfigEditorDialog(QDialog):
             else:
                 self.right_tree.addTopLevelItem(root)
 
+        # Preview Shapes
+        self.preview_tree.clear()
+        for shape in tab.preview:
+            item = QTreeWidgetItem([shape.id])
+            item.setData(0, Qt.UserRole, "preview_shape")
+            item.setData(0, Qt.UserRole + 1, shape)
+            self.preview_tree.addTopLevelItem(item)
+            
+        self._draw_preview_shapes()
+
     def _on_profile_selected(self, item):
         tab = self._get_current_tab()
         row = self.profile_list.row(item)
@@ -275,6 +337,11 @@ class ConfigEditorDialog(QDialog):
             self.properties_editor.edit_object(profile, "profile")
 
     def _on_tree_item_selected(self, item, column):
+        obj = item.data(0, Qt.UserRole + 1)
+        role = item.data(0, Qt.UserRole)
+        self.properties_editor.edit_object(obj, role)
+
+    def _on_preview_item_selected(self, item, column):
         obj = item.data(0, Qt.UserRole + 1)
         role = item.data(0, Qt.UserRole)
         self.properties_editor.edit_object(obj, role)
@@ -294,17 +361,18 @@ class ConfigEditorDialog(QDialog):
             self.profile_list.item(i).setText(tab.profiles[i].name)
             
         # Update Tree Names
-        # Recursive update or just rebuild? Rebuild is easier but resets expansion.
-        # Let's simple traverse and update text
-        for tree in [self.left_tree, self.right_tree]:
+        for tree in [self.left_tree, self.right_tree, self.preview_tree]:
             iterator = QTreeWidgetItemIterator(tree)
             while iterator.value():
                 item = iterator.value()
                 obj = item.data(0, Qt.UserRole + 1)
                 if hasattr(obj, 'title'): item.setText(0, obj.title)
                 elif hasattr(obj, 'name'): item.setText(0, obj.name)
+                elif hasattr(obj, 'id'): item.setText(0, obj.id)
                 iterator += 1
-
+                
+        # Redraw preview scene
+        self._draw_preview_shapes()
 
     def _add_tab(self):
         new_tab = TabConfig(id=f"tab_{len(self.tabs)+1}", name="New Tab", profiles=[], parameter_sections=[])
@@ -331,6 +399,70 @@ class ConfigEditorDialog(QDialog):
         if tab and row >= 0:
             del tab.profiles[row]
             self._rebuild_workspace()
+
+    def _add_preview_rect(self):
+        tab = self._get_current_tab()
+        if not tab: return
+        shape = PreviewShapeConfig(id=f"rect_{len(tab.preview)}", type="rectangle", x=10, y=10, width=50, height=50, color="#FF0000")
+        tab.preview.append(shape)
+        self._rebuild_workspace()
+        
+    def _add_preview_circle(self):
+        tab = self._get_current_tab()
+        if not tab: return
+        shape = PreviewShapeConfig(id=f"circle_{len(tab.preview)}", type="circle", x=60, y=10, width=50, height=50, color="#00FF00")
+        tab.preview.append(shape)
+        self._rebuild_workspace()
+        
+    def _del_preview_shape(self):
+        item = self.preview_tree.currentItem()
+        if not item: return
+        shape = item.data(0, Qt.UserRole + 1)
+        tab = self._get_current_tab()
+        if shape in tab.preview:
+            tab.preview.remove(shape)
+            self._rebuild_workspace()
+
+    def _handle_shape_drop(self, target_item, drop_pos):
+        tab = self._get_current_tab()
+        if not tab: return
+        
+        source_item = self.preview_tree.currentItem()
+        if not source_item: return
+        
+        source_shape = source_item.data(0, Qt.UserRole + 1)
+        
+        if source_shape in tab.preview:
+             tab.preview.remove(source_shape)
+             
+        insert_idx = len(tab.preview) # Default append
+        if target_item:
+             target_shape = target_item.data(0, Qt.UserRole + 1)
+             try:
+                 idx = tab.preview.index(target_shape)
+                 if drop_pos == QTreeWidget.BelowItem:
+                     idx += 1
+                 insert_idx = idx
+             except ValueError:
+                 pass
+                 
+        tab.preview.insert(insert_idx, source_shape)
+        self._rebuild_workspace()
+
+    def _draw_preview_shapes(self):
+        """Update the preview using the unified ShapePreviewWidget"""
+        tab = self._get_current_tab()
+        if not tab: return
+        
+        # Gather Parameter Defaults for Context
+        context = {}
+        for section in tab.parameter_sections:
+            for param in section.parameters:
+                # Use default value for preview
+                context[param.name] = param.default
+                
+        # Update widget data
+        self.preview_view.set_data(tab.preview, context)
 
     def _setup_selection_logic(self):
         # Enforce exclusive selection between trees

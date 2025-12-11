@@ -11,6 +11,7 @@ from PySide6.QtGui import QDoubleValidator
 
 from ui.widgets import (ThemedSplitter, ThemedLabel, ThemedGroupBox, ThemedRadioButton,
                         ThemedSpinBox, ClickableLabel, ScaledPreviewLabel)
+from ui.widgets.preview_widget import ShapePreviewWidget
 from ui.widgets.parameter_factory import SectionWidget
 from core.config_manager import TabConfig
 
@@ -36,6 +37,8 @@ class ConfigureStep(QWidget):
         super().__init__(parent)
         self.context = context
         self.tab_config = tab_config
+        self.sections = [] # Keep track of sections
+        self.param_values = {} # Cache values
         
         self.setup_ui()
     
@@ -82,9 +85,20 @@ class ConfigureStep(QWidget):
         
     def populate_sections(self):
         """Populate left and right panels with sections from config"""
+        self.sections = []
         for section_config in self.tab_config.parameter_sections:
             section_widget = SectionWidget(section_config)
+            self.sections.append(section_widget)
             
+            # Connect signals from parameters
+            for param_name, param_widget in section_widget.param_widgets.items():
+                param_widget.value_changed.connect(self._on_param_changed)
+                # Initialize cache
+                # We need to get current value. Maybe param widget should expose it?
+                # access input widget directly for now or wait for first change?
+                # Ideally, initialize cache with defaults or read from widgets
+                self.param_values[param_name] = param_widget.config.default
+
             if section_config.position == "left":
                 self.left_layout.addWidget(section_widget)
             else:
@@ -123,10 +137,25 @@ class ConfigureStep(QWidget):
         preview_group.setLayout(preview_layout)
         
         # Placeholder or Real Preview
-        self.preview_label = ScaledPreviewLabel()
-        self.preview_label.setText("No Preview")
-        preview_layout.addWidget(self.preview_label, 1)
+        self.preview_widget = ShapePreviewWidget()
+        self.preview_label = None # Remove if unused, or keep for ABI if needed. replacing.
+        preview_layout.addWidget(self.preview_widget, 1)
         
         layout.addWidget(preview_group, 1)
         
         return widget
+    
+    def _on_param_changed(self, param_name, value):
+        """Handle parameter value changes"""
+        self.param_values[param_name] = value
+        self._update_preview()
+        
+    def _update_preview(self):
+        """Update the preview widget with current config and values"""
+        if self.preview_widget and hasattr(self.tab_config, 'preview'):
+             self.preview_widget.set_data(self.tab_config.preview, self.param_values)
+
+    def showEvent(self, event):
+        """Update preview when shown"""
+        super().showEvent(event)
+        self._update_preview()

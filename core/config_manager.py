@@ -42,6 +42,18 @@ class ParameterSectionConfig:
     grouped_auto: Optional[GroupedAutoConfig] = None
 
 @dataclass
+class PreviewShapeConfig:
+    id: str
+    type: str  # "rectangle", "circle"
+    x: Any  # str (equation) or float
+    y: Any  # str (equation) or float
+    width: Any  # str (equation) or float
+    height: Any  # str (equation) or float
+    color: str  # Hex string like "#RRGGBB"
+    border_color: str = "#000000"
+    border_width: int = 1
+
+@dataclass
 class TabConfig:
     id: str
     name: str
@@ -49,6 +61,7 @@ class TabConfig:
     parameter_sections: List[ParameterSectionConfig]
     # Validation rule for profiles: "none", "require_one", "require_all"
     profile_validation: str = "none"
+    preview: List[PreviewShapeConfig] = field(default_factory=list)
 
 class ConfigManager(QObject):
     """
@@ -176,12 +189,28 @@ class ConfigManager(QObject):
                     grouped_auto=grouped_auto
                 ))
             
+            # Parse Preview Shapes
+            preview_shapes = []
+            for shape in tab_data.get("preview", []):
+                preview_shapes.append(PreviewShapeConfig(
+                    id=shape.get("id", f"shape_{len(preview_shapes)}"),
+                    type=shape.get("type", "rectangle"),
+                    x=shape.get("x", 0.0),
+                    y=shape.get("y", 0.0),
+                    width=shape.get("width", 50.0),
+                    height=shape.get("height", 50.0),
+                    color=shape.get("color", "#CCCCCC"),
+                    border_color=shape.get("border_color", "#000000"),
+                    border_width=shape.get("border_width", 1)
+                ))
+
             self.tabs.append(TabConfig(
                 id=tab_data.get("id"),
                 name=tab_data.get("name"),
                 profiles=profiles,
                 parameter_sections=sections,
-                profile_validation=tab_data.get("profile_validation", "none")
+                profile_validation=tab_data.get("profile_validation", "none"),
+                preview=preview_shapes
             ))
 
     def get_tabs(self) -> List[TabConfig]:
