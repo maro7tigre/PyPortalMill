@@ -100,3 +100,52 @@ You must update the `get_stylesheet()` method in `core/theme_manager.py` to gene
     ```
 
 Once updated, restarting the application or switching themes will apply the new styles to all instances of that widget.
+
+## Advanced: Custom Widgets with Direct Theme Access
+
+For complex custom widgets that act as containers or require dynamic painting (like `CardItem`, `StatusCard`, or custom drawing widgets), relying solely on the global stylesheet might not be sufficient. In these cases, you can access the `ThemeManager` directly.
+
+### Pattern for Direct Access
+
+1.  **Inherit from `ThemedWidgetMixin`**: This ensures your widget listens to the `theme_changed` signal.
+2.  **Override `on_theme_changed`**: Call your custom update method.
+3.  **Use `get_theme_manager()`**: Fetch specific colors using dot notation matching your theme JSON structure.
+
+### Example Implementation
+
+```python
+from PySide6.QtWidgets import QFrame, QVBoxLayout
+from core.theme_manager import get_theme_manager
+from widgets.mixins import ThemedWidgetMixin
+
+class MyCustomWidget(QFrame, ThemedWidgetMixin):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        ThemedWidgetMixin.__init__(self)  # Initialize mixin
+        
+        self.layout = QVBoxLayout(self)
+        self.update_style()  # Initial style application
+
+    def on_theme_changed(self, theme_name):
+        """Signal handler called when theme switches"""
+        self.update_style()
+
+    def update_style(self):
+        """Fetch colors and apply them"""
+        tm = get_theme_manager()
+        
+        # safely fetch colors with fallbacks
+        bg_color = tm.get_color("backgrounds.tertiary")
+        border_color = tm.get_color("borders.active")
+        
+        # Apply specifically to this widget instance
+        self.setStyleSheet(f"""
+            MyCustomWidget {{
+                background-color: {bg_color};
+                border: 2px solid {border_color};
+                border-radius: 8px;
+            }}
+        """)
+```
+
+This pattern allows for highly granular control, such as changing border colors based on state (e.g., success/error) or drawing custom graphics in `paintEvent` using theme colors.

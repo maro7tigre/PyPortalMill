@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
     def _open_theme_editor(self):
         """Open the theme editor dialog"""
         # Import here to avoid circular imports
-        from ui.dialogs.theme_selection_dialog import ThemeSelectionDialog
+        from theme_editor.selection_dialog import ThemeSelectionDialog
         
         dialog = ThemeSelectionDialog(self)
         result = dialog.exec()

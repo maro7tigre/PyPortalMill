@@ -101,7 +101,7 @@ class ThemeSelectionDialog(QDialog):
     def _add_theme(self):
         """Add a new theme"""
         # Import here to avoid circular imports
-        from ui.dialogs.theme_editor_dialog import ThemeEditorDialog
+        from .editor_dialog import ThemeEditorDialog
         
         dialog = ThemeEditorDialog(self, mode='create')
         if dialog.exec():

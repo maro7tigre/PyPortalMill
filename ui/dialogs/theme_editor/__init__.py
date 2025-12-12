@@ -1,1 +1,0 @@
-# Theme editor package initialization

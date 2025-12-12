@@ -149,196 +149,207 @@ class ThemeManager(QObject):
             return ""
         
         theme = self.current_theme
-        styles = theme.get('control_styles', {})  # Get control styles from theme
+        styles = theme.get('control_styles', {})
         
-        # Extract colors
-        bg_primary = theme['backgrounds']['primary']
-        bg_secondary = theme['backgrounds']['secondary']
-        bg_tertiary = theme['backgrounds']['tertiary']
-        bg_input = theme['backgrounds']['input']
-        
-        text_primary = theme['text']['primary']
-        text_secondary = theme['text']['secondary']
-        text_disabled = theme['text']['disabled']
-        
-        accent_primary = theme['accents']['primary']
-        border_active = theme['borders']['active']
-        border_inactive = theme['borders']['inactive']
-        
-        # Extract style values
-        btn_radius = styles.get('buttons', {}).get('border_radius', 4)
-        btn_pad_h = styles.get('buttons', {}).get('padding_horizontal', 12)
-        btn_pad_v = styles.get('buttons', {}).get('padding_vertical', 6)
-        
-        # Generate button styles
-        button_styles = ""
-        
-        # Default button style (using 'primary' as default)
-        default_btn_type = 'primary'
-        if default_btn_type in theme['buttons']:
-            colors = theme['buttons'][default_btn_type]
-            button_styles += f"""
-            QPushButton {{
-                background-color: {colors['normal']['background']};
-                color: {colors['normal']['text']};
-                border: 2px solid {colors['normal']['outline']};
-                border-radius: {btn_radius}px;
-                padding: {btn_pad_v}px {btn_pad_h}px;
-                font-size: {styles.get('buttons', {}).get('font_size', 10)}pt;
-            }}
-            
-            QPushButton:hover {{
-                background-color: {colors['hovered']['background']};
-                color: {colors['hovered']['text']};
-                border: 2px solid {colors['hovered']['outline']};
-            }}
-            
-            QPushButton:pressed {{
-                background-color: {colors['clicked']['background']};
-                color: {colors['clicked']['text']};
-                border: 2px solid {colors['clicked']['outline']};
-            }}
-            
-            QPushButton:disabled {{
-                background-color: {colors['disabled']['background']};
-                color: {colors['disabled']['text']};
-                border: 2px solid {colors['disabled']['outline']};
-            }}
-            """
+        # Helper for safer lookups
+        def get_color(path, default="#000000"):
+            parts = path.split('.')
+            val = theme
+            for p in parts:
+                if isinstance(val, dict): val = val.get(p, {})
+                else: return default
+            return val if isinstance(val, str) else default
 
-        # Generate specific styles for all button types (primary, secondary, danger, etc.)
-        for btn_type, colors in theme['buttons'].items():
-            button_styles += f"""
-            QPushButton[class="{btn_type}"] {{
-                background-color: {colors['normal']['background']};
-                color: {colors['normal']['text']};
-                border: 2px solid {colors['normal']['outline']};
-            }}
-            
-            QPushButton[class="{btn_type}"]:hover {{
-                background-color: {colors['hovered']['background']};
-                color: {colors['hovered']['text']};
-                border: 2px solid {colors['hovered']['outline']};
-            }}
-            
-            QPushButton[class="{btn_type}"]:pressed {{
-                background-color: {colors['clicked']['background']};
-                color: {colors['clicked']['text']};
-                border: 2px solid {colors['clicked']['outline']};
-            }}
-            
-            QPushButton[class="{btn_type}"]:disabled {{
-                background-color: {colors['disabled']['background']};
-                color: {colors['disabled']['text']};
-                border: 2px solid {colors['disabled']['outline']};
-            }}
-            """
+        def get_style(widget_type, prop, default):
+            return styles.get(widget_type, {}).get(prop, default)
+
+        # --- Base Colors ---
+        bg_primary = get_color('backgrounds.primary', '#1d1f28')
+        bg_secondary = get_color('backgrounds.secondary', '#0d0f18')
+        bg_tertiary = get_color('backgrounds.tertiary', '#44475c')
+        bg_input = get_color('backgrounds.input', '#1d1f28')
         
-        # Build stylesheet
+        text_primary = get_color('text.primary', '#ffffff')
+        text_secondary = get_color('text.secondary', '#bdbdc0')
+        
+        border_active = get_color('borders.active', '#BB86FC')
+        border_inactive = get_color('borders.inactive', '#6f779a')
+        accent_primary = get_color('accents.primary', '#BB86FC')
+        
+        # --- Buttons ---
+        btn_radius = get_style('buttons', 'border_radius', 4)
+        btn_pad_h = get_style('buttons', 'padding_horizontal', 12)
+        btn_pad_v = get_style('buttons', 'padding_vertical', 6)
+        btn_font = get_style('buttons', 'font_size', 10)
+        btn_border = get_style('buttons', 'border_width', 1)
+
+        button_css = ""
+        # Loop through all button types defined in theme['buttons']
+        # e.g., neutral, primary, success, danger
+        if 'buttons' in theme:
+            for btn_type, states in theme['buttons'].items():
+                # Base selector (e.g., QPushButton[class="primary"])
+                # For 'neutral', we also apply it to the base QPushButton as default
+                selector = f'QPushButton[class="{btn_type}"]'
+                if btn_type == 'neutral': # Only neutral applies to default QPushButton
+                     selector += ", QPushButton"
+                
+                # Normal State
+                norm = states.get('normal', {})
+                button_css += f"""
+                {selector} {{
+                    background-color: {norm.get('background', bg_tertiary)};
+                    color: {norm.get('text', text_primary)};
+                    border: {btn_border}px solid {norm.get('outline', border_inactive)};
+                    border-radius: {btn_radius}px;
+                    padding: {btn_pad_v}px {btn_pad_h}px;
+                    font-size: {btn_font}pt;
+                }}
+                """
+                
+                # Hover State
+                hov = states.get('hovered', {})
+                button_css += f"""
+                {selector}:hover {{
+                    background-color: {hov.get('background', norm.get('background'))};
+                    color: {hov.get('text', norm.get('text'))};
+                    border: {btn_border}px solid {hov.get('outline', norm.get('outline'))};
+                }}
+                """
+                
+                # Pressed State
+                prs = states.get('clicked', {}) # 'clicked' naming in json, 'pressed' in css
+                button_css += f"""
+                {selector}:pressed {{
+                    background-color: {prs.get('background', norm.get('background'))};
+                    color: {prs.get('text', norm.get('text'))};
+                    border: {btn_border}px solid {prs.get('outline', norm.get('outline'))};
+                }}
+                """
+                
+                # Disabled State
+                dis = states.get('disabled', {})
+                button_css += f"""
+                {selector}:disabled {{
+                    background-color: {dis.get('background', bg_primary)};
+                    color: {dis.get('text', text_secondary)};
+                    border: {btn_border}px solid {dis.get('outline', border_inactive)};
+                }}
+                """
+
+        # --- Inputs ---
+        in_radius = get_style('inputs', 'border_radius', 4)
+        in_pad_h = get_style('inputs', 'padding_horizontal', 8)
+        in_pad_v = get_style('inputs', 'padding_vertical', 4)
+        in_font = get_style('inputs', 'font_size', 10)
+        in_border_w = get_style('inputs', 'border_width', 1)
+        in_focus_w = get_style('inputs', 'focus_border_width', 2)
+        
+        accent_error = get_color('accents.error', '#ff4a7c')
+
+        # --- Global Stylesheet ---
         stylesheet = f"""
-        QMainWindow {{
+        /* Global Reset */
+        QMainWindow, QDialog, QWidget {{
             background-color: {bg_primary};
             color: {text_primary};
         }}
         
-        QWidget {{
-            background-color: {bg_primary};
+        /* Typography Helper (if needed) */
+        QLabel {{ background: transparent; }}
+        
+        /* Links */
+        QLabel[class="link"] {{
+            color: {get_color('text.links', '#00c4fe')};
+            text-decoration: underline;
+        }}
+        QLabel[class="link"]:hover {{
+            color: {accent_primary};
+        }}
+
+        /* Buttons */
+        {button_css}
+        
+        /* Inputs */
+        QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{
+            background-color: {bg_input};
             color: {text_primary};
+            border: {in_border_w}px solid {border_inactive};
+            border-radius: {in_radius}px;
+            padding: {in_pad_v}px {in_pad_h}px;
+            font-size: {in_font}pt;
         }}
         
+        /* Input Focus */
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{
+            border: {in_focus_w}px solid {border_active};
+            background-color: {bg_input}; /* Ensure contrast */
+        }}
+        
+        /* Input Error State */
+        QLineEdit[error="true"], QSpinBox[error="true"], QDoubleSpinBox[error="true"] {{
+            border: {in_border_w}px solid {accent_error};
+        }}
+        
+        /* Tabs */
         QTabWidget::pane {{
             border: 1px solid {border_inactive};
             background-color: {bg_secondary};
+            border-radius: {btn_radius}px;
         }}
-        
         QTabBar::tab {{
             background-color: {bg_tertiary};
             color: {text_secondary};
-            padding: 8px 16px;
-            border: 1px solid {border_inactive};
-            border-bottom: none;
+            padding: 6px 16px;
             border-top-left-radius: {btn_radius}px;
             border-top-right-radius: {btn_radius}px;
+            margin-right: 2px;
         }}
-        
         QTabBar::tab:selected {{
             background-color: {bg_secondary};
             color: {text_primary};
-            border-color: {border_active};
+            border-bottom: 2px solid {accent_primary};
         }}
         
-        QTabBar::tab:hover {{
-            background-color: {bg_secondary};
-        }}
-        
-        {button_styles}
-        
-        QLineEdit, QSpinBox, QDoubleSpinBox {{
-            background-color: {bg_input};
-            color: {text_primary};
-            border: 1px solid {border_inactive};
-            border-radius: {styles.get('inputs', {}).get('border_radius', 4)}px;
-            padding: {styles.get('inputs', {}).get('padding_vertical', 4)}px {styles.get('inputs', {}).get('padding_horizontal', 8)}px;
-        }}
-        
-        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-            border: {styles.get('inputs', {}).get('focus_border_width', 2)}px solid {border_active};
-        }}
-        
-        QLabel {{
-            color: {text_primary};
-            background: transparent;
-        }}
-        
-        QMenuBar {{
-            background-color: {bg_tertiary};
-            color: {text_primary};
-        }}
-        
-        QMenuBar::item:selected {{
-            background-color: {bg_secondary};
-        }}
-        
-        QMenu {{
-            background-color: {bg_secondary};
-            color: {text_primary};
-            border: 1px solid {border_inactive};
-        }}
-        
-        QMenu::item:selected {{
-            background-color: {accent_primary};
-        }}
-        
-        QDialog {{
-            background-color: {bg_primary};
-            color: {text_primary};
-        }}
-        
-        QListWidget {{
-            background-color: {bg_input};
-            color: {text_primary};
-            border: 1px solid {border_inactive};
-        }}
-        
-        QListWidget::item:selected {{
-            background-color: {accent_primary};
-        }}
-        
+        /* Scrollbars */
         QScrollBar:vertical {{
             background-color: {bg_tertiary};
-            width: 12px;
+            width: 10px;
+            margin: 0px;
         }}
-        
         QScrollBar::handle:vertical {{
             background-color: {border_inactive};
-            border-radius: 6px;
+            min-height: 20px;
+            border-radius: 5px;
         }}
-        
         QScrollBar::handle:vertical:hover {{
             background-color: {border_active};
         }}
-        """
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: 0px;
+        }}
         
+        /* Menus */
+        QMenuBar {{ background-color: {bg_tertiary}; }}
+        QMenuBar::item:selected {{ background-color: {bg_secondary}; }}
+        QMenu {{ 
+            background-color: {bg_secondary}; 
+            border: 1px solid {border_inactive};
+        }}
+        QMenu::item:selected {{ background-color: {accent_primary}; }}
+        
+        /* Lists */
+        QListWidget {{
+            background-color: {bg_input};
+            border: 1px solid {border_inactive};
+            border-radius: {in_radius}px;
+        }}
+        QListWidget::item:selected {{
+            background-color: {bg_tertiary}; 
+            border: 1px solid {border_active};
+            color: {text_primary};
+        }}
+        """
         return stylesheet
     
     def get_color(self, path: str) -> str:
