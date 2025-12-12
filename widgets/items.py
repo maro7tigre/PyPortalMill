@@ -9,7 +9,9 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QPixmap, QColor, QPainter
 
-from .core import ThemedLabel, ThemedMenu, PlaceholderPixmap, ClickableImageLabel
+from .primitives.labels import ThemedLabel, ClickableImageLabel
+from .primitives.containers import ThemedMenu
+from .utils import PlaceholderPixmap
 
 
 class SelectableItem(QFrame):

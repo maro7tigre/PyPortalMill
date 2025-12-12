@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QMessageBox, QScrollArea)
 from PySide6.QtCore import Signal, Qt
 
-from .core import ThemedLabel, ThemedScrollArea
+from .primitives.labels import ThemedLabel
+from .primitives.containers import ThemedScrollArea
 from .items import ProfileItem, TypeItem
 
 

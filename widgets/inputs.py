@@ -7,7 +7,7 @@ Widgets that accept user input, primarily those bound to dollar variables.
 from PySide6.QtWidgets import QButtonGroup
 from typing import Optional, Any
 
-from .core import ThemedLineEdit, ThemedSpinBox, ThemedCheckBox, ThemedRadioButton
+from .primitives.inputs import ThemedLineEdit, ThemedSpinBox, ThemedCheckBox, ThemedRadioButton
 
 
 class DollarVariableLineEdit(ThemedLineEdit):
