@@ -4,7 +4,7 @@ from PySide6.QtGui import QPixmap
 
 from ..primitives.labels import ThemedLabel, ClickableImageLabel
 from widgets.mixins import ThemedWidgetMixin
-from .menus import ThemedMenu
+from widgets.primitives.containers import ThemedMenu
 from ..utils import PlaceholderPixmap
 from core.theme_manager import get_theme_manager
 
@@ -70,8 +70,13 @@ class SelectableItem(QFrame, ThemedWidgetMixin):
 class CardItem(SelectableItem):
     """Generic card item with image and text"""
     def __init__(self, name, size=(120, 140), image_size=(100, 100), 
-                 image_data=None, is_add_button=False, parent=None):
+                 image_data=None, is_add_button=False, parent=None, style_prefix="cards.generic"):
         super().__init__(name, is_add_button, parent)
+        self.style_prefix = style_prefix
+        self.default_size = size
+        self.default_image_size = image_size
+        
+        # Initial sizing (will be updated by theme)
         self.setFixedSize(*size)
         self.image_size = image_size
         self.image_data = image_data
@@ -82,8 +87,6 @@ class CardItem(SelectableItem):
         # Image 
         self.image_label = ClickableImageLabel(image_size)
         self.image_label.setScaledContents(True)
-        # Disconnect internal click to avoid double signals, we handle it in SelectableItem
-        # self.image_label.clicked.connect(...) 
         self.update_image()
         layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
         
@@ -114,26 +117,78 @@ class CardItem(SelectableItem):
     def update_style(self):
         tm = get_theme_manager()
         
+        # 1. Update Dimensions from Theme (control_styles)
+        def get_dim(prop, default):
+            val = tm.get_style(f"{self.style_prefix}.{prop}")
+            if val is None:
+                val = tm.get_style(f"cards.{prop}")
+            return int(val) if val is not None else default
+
+        w = get_dim("width", self.default_size[0])
+        h = get_dim("height", self.default_size[1])
+        img_w = get_dim("image_size_w", self.default_image_size[0])
+        img_h = get_dim("image_size_h", self.default_image_size[1])
+        f_size = get_dim("font_size", 12)
+        
+        if self.width() != w or self.height() != h:
+            self.setFixedSize(w, h)
+            
+        if self.image_size != (img_w, img_h):
+            self.image_size = (img_w, img_h)
+            self.image_label.setFixedSize(img_w, img_h)
+            self.update_image()
+            
+        # 2. Update Colors & Borders
+        prefix = self.style_prefix 
+        
         if self.selected:
-            bg = "#1A2E20" # TODO: Get from theme (e.g., success.dark)
-            border = tm.get_color("accents.secondary") # Green
-            width = 3
+            state = "selected"
+            default_bg = "#1A2E20"
+            default_border = "#23c87b"
         elif self._is_hovered:
-            bg = "#3a3d4d" # TODO: theme.hover
-            border = tm.get_color("borders.active") # Purple
-            width = 2
+            state = "hovered"
+            default_bg = "#3a3d4d"
+            default_border = "#8b95c0"
         else:
-            bg = tm.get_color("backgrounds.tertiary")
-            border = tm.get_color("borders.inactive")
-            width = 2
+            state = "neutral"
+            default_bg = "#44475c"
+            default_border = "#6f779a"
+            
+        def get_color_safe(key, default):
+            path = f"{prefix}.{state}.{key}"
+            # Manual lookup to distinguish missing vs black
+            parts = path.split('.')
+            curr = tm.current_theme
+            for p in parts:
+                if isinstance(curr, dict) and p in curr:
+                    curr = curr[p]
+                else:
+                    return default
+            return curr
+        
+        bg = get_color_safe("background", default_bg)
+        border_color = get_color_safe("border", default_border)
+        text_color = get_color_safe("text", "#ffffff")
+        
+        b_radius = tm.get_style(f"{prefix}.{state}.border_radius")
+        if b_radius is None: 
+            b_radius = tm.get_style(f"{prefix}.border_radius")
+        if b_radius is None: b_radius = 4
+        
+        b_width = tm.get_style(f"{prefix}.{state}.border_width")
+        if b_width is None: 
+            b_width = tm.get_style(f"{prefix}.border_width")
+        if b_width is None: b_width = 2
             
         self.setStyleSheet(f"""
             {self.__class__.__name__} {{
                 background-color: {bg};
-                border: {width}px solid {border};
-                border-radius: 4px;
+                border: {b_width}px solid {border_color};
+                border-radius: {b_radius}px;
             }}
         """)
+        
+        self.name_label.setStyleSheet(f"color: {text_color}; font-size: {f_size}pt; border: none; background: transparent;")
         self.update()
 
 class ProfileItem(CardItem):
@@ -141,13 +196,15 @@ class ProfileItem(CardItem):
     def __init__(self, name, profile_data=None, is_add_button=False, parent=None):
         image_data = profile_data.get("image") if profile_data else None
         super().__init__(name, size=(120, 140), image_size=(100, 100), 
-                       image_data=image_data, is_add_button=is_add_button, parent=parent)
+                       image_data=image_data, is_add_button=is_add_button, parent=parent,
+                       style_prefix="cards.profile")
 
 class TypeItem(CardItem):
     """Individual type item widget"""
     def __init__(self, name, image_path=None, is_add_button=False, parent=None):
         super().__init__(name, size=(100, 120), image_size=(80, 80), 
-                       image_data=image_path, is_add_button=is_add_button, parent=parent)
+                       image_data=image_path, is_add_button=is_add_button, parent=parent,
+                       style_prefix="cards.type")
         
     def update_image(self):
         if not self.image_data and not self.is_add_button:

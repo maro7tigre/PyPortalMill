@@ -11,5 +11,5 @@ from .mixins import ThemedWidgetMixin
 
 from .components.cards import *
 from .components.lists import *
-from .components.menus import *
+
 from .utils import *

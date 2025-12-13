@@ -103,19 +103,18 @@ class ThemeEditorDialog(QDialog):
         from .sections.global_settings import GlobalSection
         from .sections.buttons import ButtonsSection
         from .sections.inputs import InputsSection
-        from .sections.containers_section import ContainersSection
+        from .sections.cards import CardsSection
+        from .sections.variables import VariablesSection
         from .sections.status_section import StatusSection
         from .sections.editors import EditorsSection
-        # from .tabs.showcase_tab import ShowcaseTab # We might want to keep the full showcase as a special section?
         
         # Clear specific registry if we want to reload, but usually static is fine.
-        # Actually ThemeSectionRegistry is simple list append, so we should clear it if re-init, 
-        # or check if empty. For now assuming fresh start or simple append safe.
         if not ThemeSectionRegistry.get_sections():
             ThemeSectionRegistry.register("Global", "Colors & Typography", GlobalSection)
             ThemeSectionRegistry.register("Primitives", "Buttons", ButtonsSection)
             ThemeSectionRegistry.register("Primitives", "Inputs", InputsSection)
-            ThemeSectionRegistry.register("Containers", "Cards & Layouts", ContainersSection)
+            ThemeSectionRegistry.register("Primitives", "Variables", VariablesSection)
+            ThemeSectionRegistry.register("Components", "Cards", CardsSection)
             ThemeSectionRegistry.register("Components", "Status Cards", StatusSection)
             ThemeSectionRegistry.register("Editors", "G-Code Editor", EditorsSection)
             
