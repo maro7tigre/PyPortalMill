@@ -123,33 +123,66 @@ class CardItem(SelectableItem):
 
     def update_style(self):
         """Apply styling based on current state"""
-        if self.selected:
-            # Selected state - green theme
-            self.setStyleSheet(f"""
-                {self.__class__.__name__} {{
-                    background-color: #1A2E20;
-                    border: 3px solid #23c87b;
-                    border-radius: 4px;
-                }}
-            """)
-        elif self._is_hovered:
-            # Hover state
-            self.setStyleSheet(f"""
-                {self.__class__.__name__} {{
-                    background-color: #3a3d4d;
-                    border: 2px solid #8b95c0;
-                    border-radius: 4px;
-                }}
-            """)
+        from core.theme_manager import get_theme_manager
+        tm = get_theme_manager()
+        theme = tm.current_theme
+        
+        # Default fallback values
+        styles = {
+            "neutral": {"background": "#44475c", "border": "#6f779a"},
+            "hovered": {"background": "#3a3d4d", "border": "#8b95c0"},
+            "selected": {"background": "#1A2E20", "border": "#23c87b"}
+        }
+        
+        # Override with theme values if available
+        if theme and 'cards' in theme:
+            cards = theme['cards']
+            if 'neutral' in cards: styles['neutral'] = cards['neutral']
+            if 'hovered' in cards: styles['hovered'] = cards['hovered']
+            if 'selected' in cards: styles['selected'] = cards['selected']
+            
+            # Use geometric styles from control_styles if available
+            c_styles = theme.get('control_styles', {}).get('cards', {})
+            radius = c_styles.get('border_radius', 4)
+            border_w = c_styles.get('border_width', 2)
         else:
-            # Default state
-            self.setStyleSheet(f"""
-                {self.__class__.__name__} {{
-                    background-color: #44475c;
-                    border: 2px solid #6f779a;
-                    border-radius: 4px;
-                }}
-            """)
+            radius = 4
+            border_w = 2
+
+        if self.selected:
+            s = styles['selected']
+        elif self._is_hovered:
+            s = styles['hovered']
+        else:
+            s = styles['neutral']
+            
+        self.setStyleSheet(f"""
+            {self.__class__.__name__} {{
+                background-color: {s.get('background')};
+                border: {border_w}px solid {s.get('border')};
+                border-radius: {radius}px;
+            }}
+        """)
+        
+        # Apply Dimensions if present in theme
+        c_styles = theme.get('control_styles', {}).get('cards', {})
+        width = c_styles.get('width', 120)
+        height = c_styles.get('height', 140)
+        img_size = c_styles.get('image_size', 100)
+        font_size = c_styles.get('font_size', 12)
+        
+        self.setFixedSize(width, height)
+        if hasattr(self, 'image_label'):
+             self.image_label.setFixedSize(img_size, img_size)
+             self.image_size = (img_size, img_size)
+             # Trigger image update to rescale if needed
+             self.update_image()
+             
+        if hasattr(self, 'name_label'):
+            f = self.name_label.font()
+            f.setPointSize(font_size)
+            self.name_label.setFont(f)
+
         self.update()
 
 
@@ -225,20 +258,53 @@ class StatusCard(QFrame):
         self.update_style()
         
     def update_style(self):
-        # Colors
-        bg_color = "#44475c"
-        border_color = "#6f779a"
-        bar_color = "#8b95c0"
+        from core.theme_manager import get_theme_manager
+        tm = get_theme_manager()
         
-        if self.state == self.STATE_VALID:
-            bg_color = "#1A2E20"
-            border_color = "#23c87b"
-            bar_color = "#23c87b"
-        elif self.state == self.STATE_CHANGED:
-            bg_color = "#3E2723"
-            border_color = "#FF9800"
-            bar_color = "#FF9800"
+        # Default Hardcoded Fallbacks
+        colors = {
+            "valid": {"bg": "#1A2E20", "border": "#23c87b", "bar": "#23c87b"},
+            "changed": {"bg": "#3E2723", "border": "#FF9800", "bar": "#FF9800"},
+            "neutral": {"bg": "#44475c", "border": "#6f779a", "bar": "#8b95c0"}
+        }
+        
+        # Override from theme if available
+        # The editor uses 'status_card.valid' (single color?) or object?
+        # StatusSection.py uses: add_color_control("Valid State", "status_card.valid", ...)
+        # It seems it only sets one color for the Valid state? likely the border/bar or background?
+        # Let's assume the user meant the main accent color, but for full control we might need more.
+        # However, to be safe and compatible with existing StatusSection, let's see what it sets.
+        # It sets "status_card.valid" to a specific color hex string.
+        
+        # Let's use that color for border/bar, and maybe a dark version for BG?
+        # Or check if 'status_card' is a dict with subkeys.
+        
+        theme = tm.current_theme
+        sc = theme.get('status_card', {}) if theme else {}
+        
+        if isinstance(sc, dict): 
+            # If we updated StatusSection to be more detailed, we could use dict.
+            # But currently StatusSection sets string values for 'valid', 'changed', 'neutral'.
+            pass
             
+        # For now, let's try to fetch specific keys if they exist, or fallback to the single color for border/bar
+        
+        def get_state_colors(state_key, default_set):
+            # Check if there's a simple color defined
+            primary = tm.get_color(f"status_card.{state_key}")
+            
+            if primary and primary != "#000000":
+                # Use this primary color for border & bar
+                # Use a derived or hardcoded dark for BG? Or maybe bg_tertiary?
+                return {"bg": default_set["bg"], "border": primary, "bar": primary}
+            return default_set
+
+        s_colors = get_state_colors(self.state, colors.get(self.state, colors["neutral"]))
+
+        bg_color = s_colors["bg"]
+        border_color = s_colors["border"]
+        bar_color = s_colors["bar"]
+        
         self.setStyleSheet(f"""
             StatusCard {{
                 background-color: {bg_color};

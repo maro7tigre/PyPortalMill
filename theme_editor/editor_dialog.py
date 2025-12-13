@@ -115,7 +115,7 @@ class ThemeEditorDialog(QDialog):
             ThemeSectionRegistry.register("Global", "Colors & Typography", GlobalSection)
             ThemeSectionRegistry.register("Primitives", "Buttons", ButtonsSection)
             ThemeSectionRegistry.register("Primitives", "Inputs", InputsSection)
-            ThemeSectionRegistry.register("Containers", "Cards & Groups", ContainersSection)
+            ThemeSectionRegistry.register("Containers", "Cards & Layouts", ContainersSection)
             ThemeSectionRegistry.register("Components", "Status Cards", StatusSection)
             ThemeSectionRegistry.register("Editors", "G-Code Editor", EditorsSection)
             
@@ -206,6 +206,14 @@ class ThemeEditorDialog(QDialog):
         if self.theme_data:
             self.theme_manager.current_theme = self.theme_data
             self.theme_manager.theme_changed.emit("__preview__")
+            
+            # Regenerate stylesheet and apply to the dialog
+            new_stylesheet = self.theme_manager.get_stylesheet()
+            self.setStyleSheet(new_stylesheet)
+            
+            # Force Qt to recompute styles
+            self.style().unpolish(self)
+            self.style().polish(self)
             
     def _on_cancel(self):
         self.theme_manager.set_theme(self.original_active_theme)

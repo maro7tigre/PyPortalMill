@@ -238,14 +238,104 @@ class ThemeManager(QObject):
                 """
 
         # --- Inputs ---
-        in_radius = get_style('inputs', 'border_radius', 4)
-        in_pad_h = get_style('inputs', 'padding_horizontal', 8)
-        in_pad_v = get_style('inputs', 'padding_vertical', 4)
-        in_font = get_style('inputs', 'font_size', 10)
-        in_border_w = get_style('inputs', 'border_width', 1)
-        in_focus_w = get_style('inputs', 'focus_border_width', 2)
+        # Note: We prioritize the new dictionary-based config if it exists.
+        # Legacy values are only used as defaults if strict lookup fails in the fallback block
+        
+        in_radius = 4
+        in_pad_h = 8
+        in_pad_v = 4
+        in_font = 10
+        in_border_w = 1
+        in_focus_w = 2
+
+        # Try to get control_styles if available for base geometry
+        if 'control_styles' in theme and 'inputs' in theme['control_styles']:
+             c_in = theme['control_styles']['inputs']
+             in_radius = c_in.get('border_radius', 4)
+             in_pad_h = c_in.get('padding_horizontal', 8)
+             in_pad_v = c_in.get('padding_vertical', 4)
+             in_font = c_in.get('font_size', 10)
+             in_border_w = c_in.get('border_width', 1)
+             in_focus_w = c_in.get('focus_border_width', 2)
         
         accent_error = get_color('accents.error', '#ff4a7c')
+        
+        input_css = ""
+        # Check for new inputs configuration
+        if 'inputs' in theme and isinstance(theme['inputs'], dict) and 'normal' in theme['inputs']:
+            inp = theme['inputs']
+            norm = inp.get('normal', {})
+            foc = inp.get('focused', {})
+            err = inp.get('error', {})
+            dis = inp.get('disabled', {})
+            
+            # Base Input Style
+            input_css += f"""
+            QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{
+                background-color: {norm.get('background', bg_input)};
+                color: {norm.get('text', text_primary)};
+                border: {in_border_w}px solid {norm.get('border', border_inactive)};
+                border-radius: {in_radius}px;
+                padding: {in_pad_v}px {in_pad_h}px;
+                font-size: {in_font}pt;
+            }}
+            
+            QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{
+                background-color: {foc.get('background', bg_input)};
+                color: {foc.get('text', text_primary)};
+                border: {in_focus_w}px solid {foc.get('border', border_active)};
+            }}
+            
+            QLineEdit[error="true"], QSpinBox[error="true"], QDoubleSpinBox[error="true"] {{
+                background-color: {err.get('background', bg_input)};
+                color: {err.get('text', text_primary)};
+                border: {in_border_w}px solid {err.get('border', accent_error)};
+            }}
+            
+            QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QTextEdit:disabled {{
+                background-color: {dis.get('background', bg_input)};
+                color: {dis.get('text', text_secondary)};
+                border: {in_border_w}px solid {dis.get('border', border_inactive)};
+            }}
+            """
+        else:
+            # Fallback to legacy styling
+            input_css += f"""
+            QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{
+                background-color: {bg_input};
+                color: {text_primary};
+                border: {in_border_w}px solid {border_inactive};
+                border-radius: {in_radius}px;
+                padding: {in_pad_v}px {in_pad_h}px;
+                font-size: {in_font}pt;
+            }}
+            
+            QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{
+                border: {in_focus_w}px solid {border_active};
+                background-color: {bg_input};
+            }}
+            
+            QLineEdit[error="true"], QSpinBox[error="true"], QDoubleSpinBox[error="true"] {{
+                border: {in_border_w}px solid {accent_error};
+            }}
+            """
+
+        # --- Layouts ---
+        layouts = theme.get('layouts', {})
+        p_grid = layouts.get('profile_grid', {})
+        t_sel = layouts.get('type_selector', {})
+        
+        layout_css = f"""
+        ProfileGrid, QWidget#ProfileGridContainer {{
+            background-color: {p_grid.get('background', '#282a36')};
+            border: 1px solid {p_grid.get('border', '#44475c')};
+            border-radius: 4px;
+        }}
+        
+        TypeSelector, QWidget#TypeSelectorContainer {{
+             background-color: {t_sel.get('background', '#1d1f28')};
+        }}
+        """
 
         # --- Global Stylesheet ---
         stylesheet = f"""
@@ -271,25 +361,10 @@ class ThemeManager(QObject):
         {button_css}
         
         /* Inputs */
-        QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{
-            background-color: {bg_input};
-            color: {text_primary};
-            border: {in_border_w}px solid {border_inactive};
-            border-radius: {in_radius}px;
-            padding: {in_pad_v}px {in_pad_h}px;
-            font-size: {in_font}pt;
-        }}
-        
-        /* Input Focus */
-        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {{
-            border: {in_focus_w}px solid {border_active};
-            background-color: {bg_input}; /* Ensure contrast */
-        }}
-        
-        /* Input Error State */
-        QLineEdit[error="true"], QSpinBox[error="true"], QDoubleSpinBox[error="true"] {{
-            border: {in_border_w}px solid {accent_error};
-        }}
+        {input_css}
+
+        /* Layouts */
+        {layout_css}
         
         /* Tabs */
         QTabWidget::pane {{

@@ -44,43 +44,10 @@ class ProfileGrid(QScrollArea):
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.setStyleSheet("""
-            ProfileGrid {
-                background-color: #282a36;
-                border: 1px solid #44475c;
-                border-radius: 4px;
-            }
-            ProfileGrid QScrollBar:vertical {
-                background-color: #1d1f28;
-                width: 12px;
-                margin: 0px;
-            }
-            ProfileGrid QScrollBar::handle:vertical {
-                background-color: #6f779a;
-                min-height: 20px;
-                border-radius: 6px;
-            }
-            ProfileGrid QScrollBar::add-line:vertical, ProfileGrid QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-            ProfileGrid QScrollBar:horizontal {
-                background-color: #1d1f28;
-                height: 12px;
-                margin: 0px;
-            }
-            ProfileGrid QScrollBar::handle:horizontal {
-                background-color: #6f779a;
-                min-width: 20px;
-                border-radius: 6px;
-            }
-            ProfileGrid QScrollBar::add-line:horizontal, ProfileGrid QScrollBar::sub-line:horizontal {
-                width: 0px;
-            }
-        """)
         
         # Container widget
         container = QWidget()
-        container.setStyleSheet("QWidget { background-color: #282a36; }")
+        container.setObjectName("ProfileGridContainer")
         self.setWidget(container)
         
         # Main layout
@@ -265,7 +232,7 @@ class TypeSelector(QWidget):
         
         # Container
         container = QWidget()
-        container.setStyleSheet("QWidget { background-color: #1d1f28; }")
+        container.setObjectName("TypeSelectorContainer")
         self.items_layout = QHBoxLayout(container)
         self.items_layout.setSpacing(10)
         self.items_layout.setContentsMargins(5, 5, 5, 5)

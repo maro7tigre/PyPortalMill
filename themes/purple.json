@@ -176,13 +176,68 @@
         "cards": {
             "border_radius": 8,
             "padding": 12,
-            "border_width": 0
+            "border_width": 2,
+            "width": 120,
+            "height": 140,
+            "image_size": 100,
+            "font_size": 12
         },
         "labels": {
             "font_size_primary": 14,
             "font_size_secondary": 10,
             "font_weight_primary": "bold",
             "font_weight_secondary": "normal"
+        }
+    },
+    "inputs": {
+        "normal": {
+            "background": "#1d1f28",
+            "border": "#6f779a",
+            "text": "#ffffff"
+        },
+        "focused": {
+            "background": "#1d1f28",
+            "border": "#BB86FC",
+            "text": "#ffffff"
+        },
+        "error": {
+            "background": "#1d1f28",
+            "border": "#ff4a7c",
+            "text": "#ffffff"
+        },
+        "disabled": {
+            "background": "#1d1f28",
+            "border": "#44475c",
+            "text": "#6f779a"
+        }
+    },
+    "cards": {
+        "neutral": {
+            "background": "#44475c",
+            "border": "#6f779a",
+            "text": "#ffffff"
+        },
+        "hovered": {
+            "background": "#3a3d4d",
+            "border": "#8b95c0",
+            "text": "#ffffff"
+        },
+        "selected": {
+            "background": "#1A2E20",
+            "border": "#23c87b",
+            "text": "#ffffff"
+        }
+    },
+    "layouts": {
+        "profile_grid": {
+            "background": "#282a36",
+            "border": "#44475c",
+            "spacing": 10
+        },
+        "type_selector": {
+            "background": "#1d1f28",
+            "border": "#000000",
+            "spacing": 10
         }
     }
 }

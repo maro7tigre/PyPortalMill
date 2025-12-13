@@ -199,21 +199,57 @@ class StatusCard(QFrame, ThemedWidgetMixin):
         self.update_style()
         
     def update_style(self):
+        from core.theme_manager import get_theme_manager
         tm = get_theme_manager()
+        theme = tm.current_theme
         
-        if self.state == self.STATE_VALID:
-            bg = tm.get_color("status_card.valid") or "#1A2E20" 
-            border = tm.get_color("accents.secondary") 
-            bar_color = tm.get_color("accents.secondary")
-        elif self.state == self.STATE_CHANGED:
-            bg = tm.get_color("status_card.changed") or "#3E2723"
-            border = tm.get_color("accents.warning") 
-            bar_color = tm.get_color("accents.warning")
-        else:
-            bg = tm.get_color("status_card.neutral") or tm.get_color("backgrounds.tertiary")
-            border = tm.get_color("borders.inactive")
-            bar_color = tm.get_color("text.disabled")
+        # Helper to get deep value safely or return default
+        def get_val(state, key, default):
+            # Try specific path: status_card.<state>.<key>
+            val = tm.get_style(f"status_card.{state}.{key}")
             
+            sc = theme.get('status_card', {})
+            if isinstance(sc, dict):
+                 st = sc.get(state, {})
+                 if isinstance(st, dict):
+                     return st.get(key, default)
+                 # Fallback if state is just a string (old format) -> use it as border/bar color
+                 if key in ["border", "bar"]:
+                     # If previous value was string, it was a color hex
+                     if isinstance(st, str): return st
+            return default
+
+        # Defaults
+        defaults = {
+            "neutral": {
+                "background": "#44475c", "border": "#8b95c0", "title_size": 14, 
+                "title_color": "#ffffff", "msg_size": 11, "msg_color": "#8b95c0"
+            },
+            "valid": {
+                "background": "#1A2E20", "border": "#23c87b", "title_size": 14, 
+                "title_color": "#ffffff", "msg_size": 11, "msg_color": "#23c87b"
+            },
+            "changed": {
+                "background": "#3E2723", "border": "#FF9800", "title_size": 14, 
+                "title_color": "#ffffff", "msg_size": 11, "msg_color": "#FF9800"
+            }
+        }
+        
+        d = defaults.get(self.state, defaults["neutral"])
+        
+        bg = get_val(self.state, "background", d["background"])
+        border = get_val(self.state, "border", d["border"])
+        t_size = get_val(self.state, "title_size", d["title_size"])
+        t_color = get_val(self.state, "title_color", d["title_color"])
+        m_size = get_val(self.state, "msg_size", d["msg_size"])
+        m_color = get_val(self.state, "msg_color", d["msg_color"])
+        
+        # Normalize types
+        try: t_size = int(t_size)
+        except: t_size = 14
+        try: m_size = int(m_size)
+        except: m_size = 11
+        
         self.setStyleSheet(f"""
             StatusCard {{
                 background-color: {bg};
@@ -221,7 +257,13 @@ class StatusCard(QFrame, ThemedWidgetMixin):
                 border-radius: 6px;
             }}
         """)
-        self.bar.setStyleSheet(f"background-color: {bar_color}; border-radius: 2px;")
+        self.bar.setStyleSheet(f"background-color: {border}; border-radius: 2px;")
+        
+        # Update Labels
+        self.lbl_title.setStyleSheet(f"font-weight: bold; font-size: {t_size}px; color: {t_color}; border: none; background: transparent;")
+        
+        if hasattr(self, 'lbl_desc'):
+            self.lbl_desc.setStyleSheet(f"font-size: {m_size}px; color: {m_color}; border: none; background: transparent;")
         
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
