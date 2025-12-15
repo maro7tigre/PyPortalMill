@@ -110,12 +110,15 @@ class ThemeEditorDialog(QDialog):
         from .sections.frame_preview import DrawingPreviewSection
         from .sections.image_preview import ImagePreviewSection
         from .sections.lists import ListsSection
+        from .sections.smart_inputs import SmartInputsSection
+        from .sections.containers import ContainersSection
         
         # Clear specific registry if we want to reload, but usually static is fine.
         if not ThemeSectionRegistry.get_sections():
             ThemeSectionRegistry.register("Global", "Colors & Typography", GlobalSection)
             ThemeSectionRegistry.register("Primitives", "Buttons", ButtonsSection)
             ThemeSectionRegistry.register("Primitives", "Inputs", InputsSection)
+            ThemeSectionRegistry.register("Primitives", "Containers", ContainersSection)
             ThemeSectionRegistry.register("Primitives", "Variables", VariablesSection)
             ThemeSectionRegistry.register("Components", "Cards", CardsSection)
             ThemeSectionRegistry.register("Components", "Status Cards", StatusSection)
@@ -123,6 +126,7 @@ class ThemeEditorDialog(QDialog):
             ThemeSectionRegistry.register("Components", "Image Preview", ImagePreviewSection)
             ThemeSectionRegistry.register("Components", "Draggable Lists", ListsSection)
             ThemeSectionRegistry.register("Editors", "G-Code Editor", EditorsSection)
+            ThemeSectionRegistry.register("Components", "Smart Inputs", SmartInputsSection)
             
     def _build_sections(self):
         from .registry import ThemeSectionRegistry
